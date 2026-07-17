@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ScreenSplitter.UI.Views.OverlayMenuWindow"
-        Width="240" Height="64"
+        Width="88" Height="150"
         SystemDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
@@ -13,15 +13,21 @@
 
   <Border Background="#DD1E1E1E"
           CornerRadius="10"
-          Padding="12,8"
+          Padding="8"
           BoxShadow="0 2 8 0 #40000000">
-    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-      <TextBlock Text="ScreenSplitter"
-                 Foreground="White"
-                 FontSize="13"
-                 VerticalAlignment="Center" />
-      <Button Content="Zones" Click="OnZonesClicked" Padding="8,2" />
-      <Button Content="⚙" Click="OnSettingsClicked" Padding="8,2" />
+    <StackPanel Orientation="Vertical" Spacing="8" HorizontalAlignment="Center">
+
+      <Border Background="Transparent"
+              PointerPressed="OnDragHandlePressed"
+              Padding="0,2">
+        <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Center">
+          <TextBlock Text="⠿" Foreground="Gray" FontSize="14" HorizontalAlignment="Center" />
+          <TextBlock Text="ScreenSplitter" Foreground="White" FontSize="10" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Button Content="Zones" Click="OnZonesClicked" Padding="8,4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+      <Button Content="⚙ Настройки" Click="OnSettingsClicked" Padding="8,4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
     </StackPanel>
   </Border>
 </Window>

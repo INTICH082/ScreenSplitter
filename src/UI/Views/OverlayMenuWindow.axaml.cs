@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using ScreenSplitter.Platform.Windows;
 using ScreenSplitter.UI.Services;
@@ -54,5 +55,13 @@ public partial class OverlayMenuWindow : Window
     private void OnSettingsClicked(object? sender, RoutedEventArgs e)
     {
         new SettingsWindow().Show();
+    }
+
+    private void OnDragHandlePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            BeginMoveDrag(e);
+        }
     }
 }

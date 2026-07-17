@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using ScreenSplitter.Core;
 using ScreenSplitter.Core.Models;
 using ScreenSplitter.Platform.Windows;
+using ScreenSplitter.Platform.Windows.Native;
 using ScreenSplitter.UI.Views;
 
 namespace ScreenSplitter.UI.Services;
@@ -25,6 +26,7 @@ public class ZoneManager
     private readonly List<Slot> _slots = new();
     private Slot? _pendingSwap;
     private Window? _screenSource;
+    private WindowMoveWatcher? _moveWatcher;
 
     public void AttachScreenSource(Window window)
     {
@@ -63,6 +65,38 @@ public class ZoneManager
                 (int)(rel.Height * workingArea.Height));
 
             CreateSlot(rel, bounds);
+        }
+
+        EnsureMoveWatcherStarted();
+    }
+
+    private void EnsureMoveWatcherStarted()
+    {
+        if (_moveWatcher is not null) return;
+
+        _moveWatcher = new WindowMoveWatcher();
+        _moveWatcher.WindowDropped += OnWindowDropped;
+    }
+
+    private void OnWindowDropped(IntPtr hwnd)
+    {
+        if (!User32.GetWindowRect(hwnd, out var rect)) return;
+
+        var centerX = (rect.Left + rect.Right) / 2;
+        var centerY = (rect.Top + rect.Bottom) / 2;
+
+        foreach (var slot in _slots)
+        {
+            if (slot.Status != ZoneSlotStatus.Free) continue;
+
+            var b = slot.Bounds;
+            bool inside = centerX >= b.X && centerX < b.X + b.Width && centerY >= b.Y && centerY < b.Y + b.Height;
+
+            if (inside)
+            {
+                PlaceAppWindow(hwnd, b);
+                return;
+            }
         }
     }
 
@@ -203,5 +237,8 @@ public class ZoneManager
             slot.Chip.Close();
         }
         _slots.Clear();
+
+        _moveWatcher?.Dispose();
+        _moveWatcher = null;
     }
 }

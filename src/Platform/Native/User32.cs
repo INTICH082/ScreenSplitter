@@ -60,6 +60,27 @@ public static class User32
     [DllImport("comctl32.dll", SetLastError = true)]
     public static extern bool RemoveWindowSubclass(IntPtr hWnd, SubclassProc pfnSubclass, IntPtr uIdSubclass);
 
+    public const uint EVENT_SYSTEM_MOVESIZESTART = 0x000A;
+    public const uint EVENT_SYSTEM_MOVESIZEEND = 0x000B;
+    public const uint WINEVENT_OUTOFCONTEXT = 0x0000;
+    public const uint WINEVENT_SKIPOWNPROCESS = 0x0002;
+    public const int OBJID_WINDOW = 0;
+
+    public delegate void WinEventDelegate(
+        IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
+        int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SetWinEventHook(
+        uint eventMin, uint eventMax, IntPtr hmodWinEventProc,
+        WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool UnhookWinEvent(IntPtr hWinEventHook);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT
     {
