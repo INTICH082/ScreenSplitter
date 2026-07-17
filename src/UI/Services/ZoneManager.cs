@@ -192,6 +192,8 @@ public class ZoneManager
             bounds.Height - margin * 2);
     }
 
+    public void CloseAllZones() => ClearAll();
+
     private void ClearAll()
     {
         _pendingSwap = null;
