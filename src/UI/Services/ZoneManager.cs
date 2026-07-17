@@ -64,7 +64,7 @@ public class ZoneManager
                 (int)(rel.Width * workingArea.Width),
                 (int)(rel.Height * workingArea.Height));
 
-            CreateSlot(rel, bounds);
+            CreateSlot(rel, bounds, _slots.Count + 1);
         }
 
         EnsureMoveWatcherStarted();
@@ -100,11 +100,12 @@ public class ZoneManager
         }
     }
 
-    private void CreateSlot(RelativeZoneRect relative, PixelRect bounds)
+    private void CreateSlot(RelativeZoneRect relative, PixelRect bounds, int index)
     {
         var border = new ZoneBorderWindow();
         border.Show();
         border.PlaceAt(bounds);
+        border.SetIndex(index);
 
         var chip = new ZoneChipWindow();
         chip.Show();
@@ -183,18 +184,21 @@ public class ZoneManager
         {
             _pendingSwap = slot;
             slot.Chip.SetSelectedForSwap(true);
+            slot.Border.SetHighlighted(true);
             return;
         }
 
         if (ReferenceEquals(_pendingSwap, slot))
         {
             _pendingSwap.Chip.SetSelectedForSwap(false);
+            _pendingSwap.Border.SetHighlighted(false);
             _pendingSwap = null;
             return;
         }
 
         SwapSlots(_pendingSwap, slot);
         _pendingSwap.Chip.SetSelectedForSwap(false);
+        _pendingSwap.Border.SetHighlighted(false);
         _pendingSwap = null;
     }
 

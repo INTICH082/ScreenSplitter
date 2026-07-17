@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media;
 using ScreenSplitter.Platform.Windows;
 using ScreenSplitter.UI.Services;
 
@@ -28,30 +27,23 @@ public partial class ZoneChipWindow : Window
 
     public void Render(ZoneSlotStatus status, string? title)
     {
-        switch (status)
+        ChipBorder.Classes.Set("free", status == ZoneSlotStatus.Free);
+        ChipBorder.Classes.Set("assigned", status == ZoneSlotStatus.Assigned);
+
+        Label.Text = status switch
         {
-            case ZoneSlotStatus.Empty:
-                Label.Text = "+ Назначить";
-                ClearButton.IsVisible = false;
-                ChipBorder.Background = new SolidColorBrush(Color.Parse("#DD1E1E1E"));
-                break;
-            case ZoneSlotStatus.Free:
-                Label.Text = "Свободно";
-                ClearButton.IsVisible = true;
-                ChipBorder.Background = new SolidColorBrush(Color.Parse("#DD2E4E2E"));
-                break;
-            case ZoneSlotStatus.Assigned:
-                Label.Text = title ?? "Приложение";
-                ClearButton.IsVisible = true;
-                ChipBorder.Background = new SolidColorBrush(Color.Parse("#DD1E2E4E"));
-                break;
-        }
+            ZoneSlotStatus.Empty => "+ Назначить",
+            ZoneSlotStatus.Free => "Свободно",
+            ZoneSlotStatus.Assigned => title ?? "Приложение",
+            _ => "?"
+        };
+
+        ClearButton.IsVisible = status != ZoneSlotStatus.Empty;
     }
 
     public void SetSelectedForSwap(bool selected)
     {
-        ChipBorder.BorderBrush = selected ? new SolidColorBrush(Color.Parse("#FFFFA500")) : null;
-        ChipBorder.BorderThickness = selected ? new Thickness(2) : new Thickness(0);
+        ChipBorder.Classes.Set("swap-selected", selected);
     }
 
     private void OnChipPressed(object? sender, PointerPressedEventArgs e)

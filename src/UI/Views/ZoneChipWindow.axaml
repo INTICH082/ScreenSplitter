@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ScreenSplitter.UI.Views.ZoneChipWindow"
-        Width="150" Height="34"
+        Width="168" Height="34"
         SystemDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
@@ -11,24 +11,56 @@
         ShowActivated="False"
         WindowStartupLocation="Manual">
 
+  <Window.Styles>
+    <Style Selector="Border#ChipBorder.free">
+      <Setter Property="BorderBrush" Value="{StaticResource AccentFree}" />
+    </Style>
+    <Style Selector="Border#ChipBorder.free Ellipse#StatusDot">
+      <Setter Property="Fill" Value="{StaticResource AccentFree}" />
+    </Style>
+
+    <Style Selector="Border#ChipBorder.assigned">
+      <Setter Property="BorderBrush" Value="{StaticResource AccentAssigned}" />
+    </Style>
+    <Style Selector="Border#ChipBorder.assigned Ellipse#StatusDot">
+      <Setter Property="Fill" Value="{StaticResource AccentAssigned}" />
+    </Style>
+
+    <Style Selector="Border#ChipBorder.swap-selected">
+      <Setter Property="BorderBrush" Value="{StaticResource AccentSignal}" />
+      <Setter Property="BorderThickness" Value="2" />
+    </Style>
+  </Window.Styles>
+
   <Border x:Name="ChipBorder"
-          Background="#DD1E1E1E"
-          CornerRadius="8"
-          Padding="8,4"
+          Background="{StaticResource BgPanel}"
+          CornerRadius="17"
+          Padding="10,0"
+          BorderThickness="1"
+          BorderBrush="{StaticResource LineHairline}"
           PointerPressed="OnChipPressed">
-    <Grid ColumnDefinitions="*,Auto">
+    <Grid ColumnDefinitions="Auto,*,Auto">
+      <Ellipse x:Name="StatusDot"
+               Grid.Column="0"
+               Width="7" Height="7"
+               Fill="{StaticResource TextMuted}"
+               Margin="0,0,7,0"
+               VerticalAlignment="Center" />
       <TextBlock x:Name="Label"
-                 Grid.Column="0"
-                 Text="+"
-                 Foreground="White"
-                 FontSize="12"
+                 Grid.Column="1"
+                 Text="+ Назначить"
+                 Foreground="{StaticResource TextPrimary}"
+                 FontFamily="Consolas"
+                 FontSize="11.5"
                  TextTrimming="CharacterEllipsis"
                  VerticalAlignment="Center" />
       <Button x:Name="ClearButton"
-              Grid.Column="1"
+              Grid.Column="2"
               Content="✕"
-              Padding="4,0"
-              FontSize="11"
+              Classes="action"
+              Padding="6,2"
+              FontSize="10"
+              Margin="6,0,0,0"
               IsVisible="False"
               Click="OnClearClicked" />
     </Grid>

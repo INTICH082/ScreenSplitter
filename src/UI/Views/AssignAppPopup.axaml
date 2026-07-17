@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ScreenSplitter.UI.Views.AssignAppPopup"
-        Width="220" Height="120"
+        Width="230" Height="130"
         SystemDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
@@ -10,20 +10,25 @@
         CanResize="False"
         WindowStartupLocation="Manual">
 
-  <Border Background="#EE1E1E1E"
+  <Border Background="{StaticResource BgPanel}"
           CornerRadius="10"
-          Padding="12"
-          BoxShadow="0 2 8 0 #40000000">
+          Padding="14"
+          BorderThickness="1"
+          BorderBrush="{StaticResource LineHairline}"
+          BoxShadow="0 4 14 0 #60000000">
     <StackPanel Spacing="8">
       <TextBlock Text="Что разместить в этой зоне?"
-                 Foreground="White"
+                 Foreground="{StaticResource TextPrimary}"
                  FontSize="12"
                  TextWrapping="Wrap" />
       <Button Content="Свободный доступ (рабочий стол)"
+              Classes="action"
               HorizontalAlignment="Stretch"
               Click="OnFreeClicked" />
       <Button Content="Выбрать приложение..."
+              Classes="primary"
               HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center"
               Click="OnPickAppClicked" />
     </StackPanel>
   </Border>

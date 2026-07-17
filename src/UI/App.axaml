@@ -3,8 +3,54 @@
              x:Class="ScreenSplitter.UI.App"
              RequestedThemeVariant="Dark">
 
+  <Application.Resources>
+    <SolidColorBrush x:Key="BgPanel" Color="#14181F" />
+    <SolidColorBrush x:Key="BgPanelAlt" Color="#1B212B" />
+    <SolidColorBrush x:Key="BgPanelSunken" Color="#0E1116" />
+    <SolidColorBrush x:Key="LineHairline" Color="#2A3140" />
+    <SolidColorBrush x:Key="AccentSignal" Color="#4FD1C5" />
+    <SolidColorBrush x:Key="AccentAssigned" Color="#F2A65A" />
+    <SolidColorBrush x:Key="AccentFree" Color="#7EE081" />
+    <SolidColorBrush x:Key="AccentDanger" Color="#FF5D5D" />
+    <SolidColorBrush x:Key="TextPrimary" Color="#E7ECF3" />
+    <SolidColorBrush x:Key="TextMuted" Color="#8892A4" />
+  </Application.Resources>
+
   <Application.Styles>
     <FluentTheme />
+
+    <Style Selector="Button.action">
+      <Setter Property="Background" Value="{StaticResource BgPanelAlt}" />
+      <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="FontFamily" Value="Inter" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineHairline}" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.action:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource AccentSignal}" />
+      <Setter Property="TextBlock.Foreground" Value="#0B0E14" />
+      <Setter Property="BorderBrush" Value="{StaticResource AccentSignal}" />
+    </Style>
+
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{StaticResource AccentSignal}" />
+      <Setter Property="Foreground" Value="#0B0E14" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="FontFamily" Value="Inter" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.88" />
+    </Style>
   </Application.Styles>
 
   <TrayIcon.Icons>

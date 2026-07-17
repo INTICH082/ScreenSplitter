@@ -2,26 +2,70 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ScreenSplitter.UI.Views.ZonePatternPickerWindow"
         Title="Разбить экран"
-        Width="300" Height="330"
+        Width="320" Height="400"
+        Background="{StaticResource BgPanel}"
         WindowStartupLocation="CenterScreen"
         CanResize="False">
 
-  <StackPanel Margin="16" Spacing="10">
-    <TextBlock Text="Готовые варианты" FontWeight="Bold" />
-    <Button Content="1 большой экран (без разбивки)" HorizontalAlignment="Stretch" Click="OnSingleClicked" />
-    <Button Content="2 экрана: слева / справа" HorizontalAlignment="Stretch" Click="OnVerticalClicked" />
-    <Button Content="2 экрана: сверху / снизу" HorizontalAlignment="Stretch" Click="OnHorizontalClicked" />
-    <Button Content="4 экрана (сетка 2x2)" HorizontalAlignment="Stretch" Click="OnGrid2x2Clicked" />
+  <StackPanel Margin="18" Spacing="10">
+    <TextBlock Text="ГОТОВЫЕ ВАРИАНТЫ"
+               Foreground="{StaticResource TextMuted}"
+               FontFamily="Consolas" FontSize="10.5" LetterSpacing="1" />
 
-    <Separator Margin="0,8" />
+    <Button Classes="action" HorizontalAlignment="Stretch" Click="OnSingleClicked">
+      <Grid ColumnDefinitions="34,*">
+        <Border Grid.Column="0" Width="28" Height="20" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5" CornerRadius="2" />
+        <TextBlock Grid.Column="1" Text="1 большой экран" VerticalAlignment="Center" Margin="8,0,0,0" />
+      </Grid>
+    </Button>
 
-    <TextBlock Text="Свой вариант — сетка" FontWeight="Bold" />
-    <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto" >
-      <TextBlock Grid.Column="0" Text="Колонки:" VerticalAlignment="Center" Margin="0,0,6,0" />
+    <Button Classes="action" HorizontalAlignment="Stretch" Click="OnVerticalClicked">
+      <Grid ColumnDefinitions="34,*">
+        <Grid Grid.Column="0" Width="28" Height="20" ColumnDefinitions="*,1,*">
+          <Border Grid.Column="0" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,1.5,0,1.5" />
+          <Rectangle Grid.Column="1" Fill="{StaticResource LineHairline}" />
+          <Border Grid.Column="2" BorderBrush="{StaticResource LineHairline}" BorderThickness="0,1.5,1.5,1.5" />
+        </Grid>
+        <TextBlock Grid.Column="1" Text="2 экрана: слева / справа" VerticalAlignment="Center" Margin="8,0,0,0" />
+      </Grid>
+    </Button>
+
+    <Button Classes="action" HorizontalAlignment="Stretch" Click="OnHorizontalClicked">
+      <Grid ColumnDefinitions="34,*">
+        <Grid Grid.Column="0" Width="28" Height="20" RowDefinitions="*,1,*">
+          <Border Grid.Row="0" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,1.5,1.5,0" />
+          <Rectangle Grid.Row="1" Fill="{StaticResource LineHairline}" />
+          <Border Grid.Row="2" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,0,1.5,1.5" />
+        </Grid>
+        <TextBlock Grid.Column="1" Text="2 экрана: сверху / снизу" VerticalAlignment="Center" Margin="8,0,0,0" />
+      </Grid>
+    </Button>
+
+    <Button Classes="action" HorizontalAlignment="Stretch" Click="OnGrid2x2Clicked">
+      <Grid ColumnDefinitions="34,*">
+        <Grid Grid.Column="0" Width="28" Height="20" ColumnDefinitions="*,1,*" RowDefinitions="*,1,*">
+          <Border Grid.Row="0" Grid.Column="0" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,1.5,0,0" />
+          <Border Grid.Row="0" Grid.Column="2" BorderBrush="{StaticResource LineHairline}" BorderThickness="0,1.5,1.5,0" />
+          <Border Grid.Row="2" Grid.Column="0" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,0,0,1.5" />
+          <Border Grid.Row="2" Grid.Column="2" BorderBrush="{StaticResource LineHairline}" BorderThickness="0,0,1.5,1.5" />
+          <Rectangle Grid.Row="1" Grid.ColumnSpan="3" Fill="{StaticResource LineHairline}" />
+          <Rectangle Grid.Column="1" Grid.RowSpan="3" Fill="{StaticResource LineHairline}" />
+        </Grid>
+        <TextBlock Grid.Column="1" Text="4 экрана (сетка 2x2)" VerticalAlignment="Center" Margin="8,0,0,0" />
+      </Grid>
+    </Button>
+
+    <Rectangle Height="1" Fill="{StaticResource LineHairline}" Margin="0,6" />
+
+    <TextBlock Text="СВОЙ ВАРИАНТ — СЕТКА"
+               Foreground="{StaticResource TextMuted}"
+               FontFamily="Consolas" FontSize="10.5" LetterSpacing="1" />
+    <Grid ColumnDefinitions="Auto,*,Auto,*">
+      <TextBlock Grid.Column="0" Text="Колонки:" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" Margin="0,0,6,0" />
       <NumericUpDown x:Name="ColsUpDown" Grid.Column="1" Minimum="1" Maximum="6" Value="2" Width="90" />
-      <TextBlock Grid.Column="2" Text="Строки:" VerticalAlignment="Center" Margin="12,0,6,0" />
+      <TextBlock Grid.Column="2" Text="Строки:" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" Margin="12,0,6,0" />
       <NumericUpDown x:Name="RowsUpDown" Grid.Column="3" Minimum="1" Maximum="6" Value="2" Width="90" />
     </Grid>
-    <Button Content="Применить свою сетку" HorizontalAlignment="Stretch" Click="OnCustomGridClicked" />
+    <Button Content="Применить свою сетку" Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="OnCustomGridClicked" />
   </StackPanel>
 </Window>
