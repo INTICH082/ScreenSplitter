@@ -9,6 +9,10 @@ public partial class ZonePatternPickerWindow : Window
 {
     private readonly ZoneManager _zoneManager;
 
+    public ZonePatternPickerWindow() : this(new ZoneManager())
+    {
+    }
+
     public ZonePatternPickerWindow(ZoneManager zoneManager)
     {
         InitializeComponent();

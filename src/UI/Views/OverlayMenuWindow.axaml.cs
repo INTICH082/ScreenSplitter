@@ -10,6 +10,10 @@ public partial class OverlayMenuWindow : Window
 {
     private readonly ZoneManager _zoneManager;
 
+    public OverlayMenuWindow() : this(new ZoneManager())
+    {
+    }
+
     public OverlayMenuWindow(ZoneManager zoneManager)
     {
         _zoneManager = zoneManager;
@@ -29,8 +33,7 @@ public partial class OverlayMenuWindow : Window
         if (area is { } workingArea)
         {
             Position = new PixelPoint(
-                workingArea.X + workingArea.Width - (int)Width - 10,
-                workingArea.Y + 10);
+                workingArea.X + workingArea.Width - (int)Width - 10, workingArea.Y + 10);
         }
     }
 
