@@ -1,0 +1,14 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ScreenSplitter.UI.Views.SettingsWindow"
+        Title="Настройки ScreenSplitter"
+        Width="280" Height="120"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False">
+
+  <StackPanel Margin="16" Spacing="12">
+    <CheckBox x:Name="StartupCheckBox"
+              Content="Запускать вместе с Windows"
+              IsCheckedChanged="OnStartupCheckedChanged" />
+  </StackPanel>
+</Window>

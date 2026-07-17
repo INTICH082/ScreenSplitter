@@ -2,13 +2,17 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using ScreenSplitter.Platform.Windows;
+using ScreenSplitter.UI.Services;
 
 namespace ScreenSplitter.UI.Views;
 
 public partial class OverlayMenuWindow : Window
 {
-    public OverlayMenuWindow()
+    private readonly ZoneManager _zoneManager;
+
+    public OverlayMenuWindow(ZoneManager zoneManager)
     {
+        _zoneManager = zoneManager;
         InitializeComponent();
         Opened += OnWindowOpened;
     }
@@ -41,12 +45,11 @@ public partial class OverlayMenuWindow : Window
 
     private void OnZonesClicked(object? sender, RoutedEventArgs e)
     {
-        // Заглушка. На этапе 2 здесь будет открываться ZoneEditorWindow
-        // с выбором пресета раскладки (2 колонки / сетка 2x2 / и т.д.)
+        new ZonePatternPickerWindow(_zoneManager).Show();
     }
 
     private void OnSettingsClicked(object? sender, RoutedEventArgs e)
     {
-        // Заглушка под будущее окно настроек.
+        new SettingsWindow().Show();
     }
 }

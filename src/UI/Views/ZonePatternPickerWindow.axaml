@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ScreenSplitter.UI.Views.ZonePatternPickerWindow"
+        Title="Разбить экран"
+        Width="300" Height="330"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False">
+
+  <StackPanel Margin="16" Spacing="10">
+    <TextBlock Text="Готовые варианты" FontWeight="Bold" />
+    <Button Content="1 большой экран (без разбивки)" HorizontalAlignment="Stretch" Click="OnSingleClicked" />
+    <Button Content="2 экрана: слева / справа" HorizontalAlignment="Stretch" Click="OnVerticalClicked" />
+    <Button Content="2 экрана: сверху / снизу" HorizontalAlignment="Stretch" Click="OnHorizontalClicked" />
+    <Button Content="4 экрана (сетка 2x2)" HorizontalAlignment="Stretch" Click="OnGrid2x2Clicked" />
+
+    <Separator Margin="0,8" />
+
+    <TextBlock Text="Свой вариант — сетка" FontWeight="Bold" />
+    <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto" >
+      <TextBlock Grid.Column="0" Text="Колонки:" VerticalAlignment="Center" Margin="0,0,6,0" />
+      <NumericUpDown x:Name="ColsUpDown" Grid.Column="1" Minimum="1" Maximum="6" Value="2" Width="90" />
+      <TextBlock Grid.Column="2" Text="Строки:" VerticalAlignment="Center" Margin="12,0,6,0" />
+      <NumericUpDown x:Name="RowsUpDown" Grid.Column="3" Minimum="1" Maximum="6" Value="2" Width="90" />
+    </Grid>
+    <Button Content="Применить свою сетку" HorizontalAlignment="Stretch" Click="OnCustomGridClicked" />
+  </StackPanel>
+</Window>

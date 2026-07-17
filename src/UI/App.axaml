@@ -14,6 +14,20 @@
           <NativeMenu>
             <NativeMenuItem Header="Показать/скрыть меню" Click="OnToggleOverlay" />
             <NativeMenuItemSeparator />
+            <NativeMenuItem Header="Разбить экран">
+              <NativeMenuItem.Menu>
+                <NativeMenu>
+                  <NativeMenuItem Header="1 большой экран" Click="OnPatternSingleClicked" />
+                  <NativeMenuItem Header="2 экрана: слева / справа" Click="OnPatternVerticalClicked" />
+                  <NativeMenuItem Header="2 экрана: сверху / снизу" Click="OnPatternHorizontalClicked" />
+                  <NativeMenuItem Header="4 экрана (сетка 2x2)" Click="OnPatternGrid2x2Clicked" />
+                  <NativeMenuItemSeparator />
+                  <NativeMenuItem Header="Свой вариант..." Click="OnPatternCustomClicked" />
+                </NativeMenu>
+              </NativeMenuItem.Menu>
+            </NativeMenuItem>
+            <NativeMenuItem Header="Настройки..." Click="OnSettingsMenuClicked" />
+            <NativeMenuItemSeparator />
             <NativeMenuItem Header="Выход" Click="OnExit" />
           </NativeMenu>
         </TrayIcon.Menu>
