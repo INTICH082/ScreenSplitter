@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ScreenSplitter.UI.Views.OverlayMenuWindow"
+        Width="240" Height="64"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        CanResize="False"
+        ShowActivated="False"
+        WindowStartupLocation="Manual">
+
+  <Border Background="#DD1E1E1E"
+          CornerRadius="10"
+          Padding="12,8"
+          BoxShadow="0 2 8 0 #40000000">
+    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+      <TextBlock Text="ScreenSplitter"
+                 Foreground="White"
+                 FontSize="13"
+                 VerticalAlignment="Center" />
+      <Button Content="Zones" Click="OnZonesClicked" Padding="8,2" />
+      <Button Content="⚙" Click="OnSettingsClicked" Padding="8,2" />
+    </StackPanel>
+  </Border>
+</Window>

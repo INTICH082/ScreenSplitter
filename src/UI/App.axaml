@@ -1,0 +1,24 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ScreenSplitter.UI.App"
+             RequestedThemeVariant="Dark">
+
+  <Application.Styles>
+    <FluentTheme />
+  </Application.Styles>
+
+  <TrayIcon.Icons>
+    <TrayIcons>
+      <TrayIcon Icon="/Assets/icon.ico" ToolTipText="ScreenSplitter">
+        <TrayIcon.Menu>
+          <NativeMenu>
+            <NativeMenuItem Header="Показать/скрыть меню" Click="OnToggleOverlay" />
+            <NativeMenuItemSeparator />
+            <NativeMenuItem Header="Выход" Click="OnExit" />
+          </NativeMenu>
+        </TrayIcon.Menu>
+      </TrayIcon>
+    </TrayIcons>
+  </TrayIcon.Icons>
+
+</Application>
