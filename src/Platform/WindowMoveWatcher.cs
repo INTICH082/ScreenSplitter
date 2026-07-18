@@ -8,7 +8,8 @@ public sealed class WindowMoveWatcher : IDisposable
     private readonly IntPtr _hook;
     private readonly uint _ownProcessId;
 
-    public event Action<IntPtr>? WindowDropped;
+    public event Action<IntPtr>? MoveStarted;
+    public event Action<IntPtr>? MoveEnded;
 
     public WindowMoveWatcher()
     {
@@ -16,7 +17,7 @@ public sealed class WindowMoveWatcher : IDisposable
         _callback = OnWinEvent;
 
         _hook = User32.SetWinEventHook(
-            User32.EVENT_SYSTEM_MOVESIZEEND,
+            User32.EVENT_SYSTEM_MOVESIZESTART,
             User32.EVENT_SYSTEM_MOVESIZEEND,
             IntPtr.Zero,
             _callback,
@@ -32,7 +33,14 @@ public sealed class WindowMoveWatcher : IDisposable
         User32.GetWindowThreadProcessId(hwnd, out var pid);
         if (pid == _ownProcessId) return;
 
-        WindowDropped?.Invoke(hwnd);
+        if (eventType == User32.EVENT_SYSTEM_MOVESIZESTART)
+        {
+            MoveStarted?.Invoke(hwnd);
+        }
+        else if (eventType == User32.EVENT_SYSTEM_MOVESIZEEND)
+        {
+            MoveEnded?.Invoke(hwnd);
+        }
     }
 
     public void Dispose()

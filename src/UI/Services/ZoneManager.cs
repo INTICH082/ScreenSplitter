@@ -1,5 +1,7 @@
+using System.Text;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using ScreenSplitter.Core;
 using ScreenSplitter.Core.Models;
 using ScreenSplitter.Platform.Windows;
@@ -22,12 +24,15 @@ public class ZoneManager
         public string? DisplayName { get; set; }
         public System.Diagnostics.Process? Process { get; set; }
         public IntPtr WindowHandle { get; set; }
+        public bool IsDropHighlighted { get; set; }
     }
 
     private readonly List<Slot> _slots = new();
     private Slot? _pendingSwap;
     private Window? _screenSource;
     private WindowMoveWatcher? _moveWatcher;
+    private DispatcherTimer? _dragHoverTimer;
+    private IntPtr _draggedWindow;
 
     public void AttachScreenSource(Window window)
     {
@@ -71,35 +76,100 @@ public class ZoneManager
         EnsureMoveWatcherStarted();
     }
 
+    // --- Перетаскивание окон и подсветка зон-целей ---
+
     private void EnsureMoveWatcherStarted()
     {
         if (_moveWatcher is not null) return;
 
         _moveWatcher = new WindowMoveWatcher();
-        _moveWatcher.WindowDropped += OnWindowDropped;
+        _moveWatcher.MoveStarted += OnDragStarted;
+        _moveWatcher.MoveEnded += OnDragEnded;
     }
 
-    private void OnWindowDropped(IntPtr hwnd)
+    private void OnDragStarted(IntPtr hwnd)
     {
-        if (!User32.GetWindowRect(hwnd, out var rect)) return;
-
-        var centerX = (rect.Left + rect.Right) / 2;
-        var centerY = (rect.Top + rect.Bottom) / 2;
+        _draggedWindow = hwnd;
 
         foreach (var slot in _slots)
         {
-            if (slot.Status != ZoneSlotStatus.Free) continue;
+            slot.Border.SetDropTargetActive(true);
+        }
 
-            var b = slot.Bounds;
-            bool inside = centerX >= b.X && centerX < b.X + b.Width && centerY >= b.Y && centerY < b.Y + b.Height;
+        _dragHoverTimer?.Stop();
+        _dragHoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
+        _dragHoverTimer.Tick += (_, _) => UpdateHoveredZone();
+        _dragHoverTimer.Start();
+    }
 
-            if (inside)
+    private void UpdateHoveredZone()
+    {
+        if (!User32.GetCursorPos(out var cursor)) return;
+
+        foreach (var slot in _slots)
+        {
+            var inside = Contains(slot.Bounds, cursor.X, cursor.Y);
+            if (inside != slot.IsDropHighlighted)
             {
-                PlaceAppWindow(hwnd, b);
-                return;
+                slot.IsDropHighlighted = inside;
+                slot.Border.SetDropHighlighted(inside);
             }
         }
     }
+
+    private void OnDragEnded(IntPtr hwnd)
+    {
+        _dragHoverTimer?.Stop();
+        _dragHoverTimer = null;
+        _draggedWindow = IntPtr.Zero;
+
+        Slot? target = null;
+
+        if (User32.GetCursorPos(out var cursor))
+        {
+            target = _slots.FirstOrDefault(s => Contains(s.Bounds, cursor.X, cursor.Y));
+        }
+
+        foreach (var slot in _slots)
+        {
+            slot.Border.SetDropTargetActive(false);
+            slot.Border.SetDropHighlighted(false);
+            slot.IsDropHighlighted = false;
+        }
+
+        if (target is null) return;
+
+        AssignDroppedWindow(target, hwnd);
+    }
+
+    private void AssignDroppedWindow(Slot slot, IntPtr hwnd)
+    {
+        slot.Status = ZoneSlotStatus.Assigned;
+        slot.AppPath = null;
+        slot.DisplayName = GetWindowTitle(hwnd);
+        slot.Process = null;
+        slot.WindowHandle = hwnd;
+
+        WindowStyleHelper.PlaceWindowFlush(hwnd, slot.Bounds.X, slot.Bounds.Y, slot.Bounds.Width, slot.Bounds.Height);
+
+        slot.Chip.Render(ZoneSlotStatus.Assigned, slot.DisplayName);
+    }
+
+    private static string GetWindowTitle(IntPtr hwnd)
+    {
+        var length = User32.GetWindowTextLength(hwnd);
+        if (length <= 0) return "Окно";
+
+        var sb = new StringBuilder(length + 1);
+        User32.GetWindowText(hwnd, sb, sb.Capacity);
+        var text = sb.ToString();
+        return string.IsNullOrWhiteSpace(text) ? "Окно" : text;
+    }
+
+    private static bool Contains(PixelRect b, int x, int y) =>
+        x >= b.X && x < b.X + b.Width && y >= b.Y && y < b.Y + b.Height;
+
+    // --- Создание зон ---
 
     private void CreateSlot(RelativeZoneRect relative, PixelRect bounds, int index)
     {
@@ -162,7 +232,7 @@ public class ZoneManager
 
         if (handle != IntPtr.Zero)
         {
-            PlaceAppWindow(handle, slot.Bounds);
+            WindowStyleHelper.PlaceWindowFlush(handle, slot.Bounds.X, slot.Bounds.Y, slot.Bounds.Width, slot.Bounds.Height);
             WindowStyleHelper.ActivateWindow(handle);
         }
 
@@ -211,25 +281,16 @@ public class ZoneManager
         (a.Process, b.Process) = (b.Process, a.Process);
         (a.WindowHandle, b.WindowHandle) = (b.WindowHandle, a.WindowHandle);
 
-        if (a.WindowHandle != IntPtr.Zero) PlaceAppWindow(a.WindowHandle, a.Bounds);
-        if (b.WindowHandle != IntPtr.Zero) PlaceAppWindow(b.WindowHandle, b.Bounds);
+        if (a.WindowHandle != IntPtr.Zero)
+            WindowStyleHelper.PlaceWindowFlush(a.WindowHandle, a.Bounds.X, a.Bounds.Y, a.Bounds.Width, a.Bounds.Height);
+        if (b.WindowHandle != IntPtr.Zero)
+            WindowStyleHelper.PlaceWindowFlush(b.WindowHandle, b.Bounds.X, b.Bounds.Y, b.Bounds.Width, b.Bounds.Height);
 
-        var aTitle = a.AppPath is null ? null : (a.DisplayName ?? System.IO.Path.GetFileNameWithoutExtension(a.AppPath));
-        var bTitle = b.AppPath is null ? null : (b.DisplayName ?? System.IO.Path.GetFileNameWithoutExtension(b.AppPath));
+        var aTitle = a.AppPath is null ? a.DisplayName : (a.DisplayName ?? System.IO.Path.GetFileNameWithoutExtension(a.AppPath));
+        var bTitle = b.AppPath is null ? b.DisplayName : (b.DisplayName ?? System.IO.Path.GetFileNameWithoutExtension(b.AppPath));
 
         a.Chip.Render(a.Status, aTitle);
         b.Chip.Render(b.Status, bTitle);
-    }
-
-    private static void PlaceAppWindow(IntPtr handle, PixelRect bounds)
-    {
-        const int margin = 6;
-        WindowStyleHelper.MoveWindow(
-            handle,
-            bounds.X + margin,
-            bounds.Y + margin,
-            bounds.Width - margin * 2,
-            bounds.Height - margin * 2);
     }
 
     public void CloseAllZones() => ClearAll();
@@ -243,6 +304,9 @@ public class ZoneManager
             slot.Chip.Close();
         }
         _slots.Clear();
+
+        _dragHoverTimer?.Stop();
+        _dragHoverTimer = null;
 
         _moveWatcher?.Dispose();
         _moveWatcher = null;

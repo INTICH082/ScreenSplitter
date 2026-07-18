@@ -57,6 +57,7 @@ public partial class App : Application
     public void EmergencyShutdown()
     {
         try { _zoneManager.CloseAllZones(); } catch { /* best effort */ }
+        try { if (TaskbarController.IsHidden) TaskbarController.Show(); } catch { /* best effort */ }
         Environment.Exit(1);
     }
 
@@ -92,6 +93,7 @@ public partial class App : Application
     {
         _hotKeys?.Dispose();
         _zoneManager.CloseAllZones();
+        if (TaskbarController.IsHidden) TaskbarController.Show();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

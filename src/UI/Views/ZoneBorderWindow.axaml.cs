@@ -39,6 +39,21 @@ public partial class ZoneBorderWindow : Window
         }
     }
 
+    public void SetDropTargetActive(bool active)
+    {
+        var brush = new SolidColorBrush(active ? Color.Parse("#4FD1C5") : Color.Parse("#2A3140"));
+        foreach (var line in new[] { TL1, TL2, TR1, TR2, BL1, BL2, BR1, BR2 })
+        {
+            line.Stroke = brush;
+        }
+    }
+
+    public void SetDropHighlighted(bool highlighted)
+    {
+        DropHighlightFill.IsVisible = highlighted;
+        DropHighlightBorder.IsVisible = highlighted;
+    }
+
     private void DrawReticle(double width, double height)
     {
         var w = Math.Max(0, width - Inset * 2);

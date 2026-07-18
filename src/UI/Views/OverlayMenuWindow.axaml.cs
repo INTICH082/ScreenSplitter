@@ -33,8 +33,7 @@ public partial class OverlayMenuWindow : Window
         var area = Screens.Primary?.WorkingArea;
         if (area is { } workingArea)
         {
-            Position = new PixelPoint(
-                workingArea.X + workingArea.Width - (int)Width - 10, workingArea.Y + 10);
+            Position = new PixelPoint(workingArea.X + workingArea.Width - (int)Width - 10, workingArea.Y + 10);
         }
     }
 
@@ -55,6 +54,12 @@ public partial class OverlayMenuWindow : Window
     private void OnSettingsClicked(object? sender, RoutedEventArgs e)
     {
         new SettingsWindow().Show();
+    }
+
+    private void OnTaskbarToggleClicked(object? sender, RoutedEventArgs e)
+    {
+        TaskbarController.Toggle();
+        TaskbarButton.Content = TaskbarController.IsHidden ? "⬓ Показать панель" : "⬓ Панель задач";
     }
 
     private void OnDragHandlePressed(object? sender, PointerPressedEventArgs e)

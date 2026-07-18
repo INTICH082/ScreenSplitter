@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ScreenSplitter.UI.Views.OverlayMenuWindow"
-        Width="92" Height="158"
+        Width="92" Height="196"
         SystemDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
@@ -42,6 +42,8 @@
       <Rectangle Height="1" Fill="{StaticResource LineHairline}" HorizontalAlignment="Stretch" />
 
       <Button Content="Zones" Classes="action" Click="OnZonesClicked"
+              HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+      <Button x:Name="TaskbarButton" Content="⬓ Панель задач" Classes="action" Click="OnTaskbarToggleClicked"
               HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
       <Button Content="⚙ Настройки" Classes="action" Click="OnSettingsClicked"
               HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
