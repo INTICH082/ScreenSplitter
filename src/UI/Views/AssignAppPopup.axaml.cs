@@ -1,13 +1,12 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 
 namespace ScreenSplitter.UI.Views;
 
 public enum AssignChoiceKind { Cancelled, Free, App }
 
-public record AssignChoice(AssignChoiceKind Kind, string? AppPath = null);
+public record AssignChoice(AssignChoiceKind Kind, string? AppPath = null, string? DisplayName = null);
 
 public partial class AssignAppPopup : Window
 {
@@ -44,29 +43,17 @@ public partial class AssignAppPopup : Window
     private async void OnPickAppClicked(object? sender, RoutedEventArgs e)
     {
         _pickerInProgress = true;
-        IReadOnlyList<IStorageFile> files;
+        AssignChoice result;
         try
         {
-            files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-            {
-                Title = "Выберите приложение",
-                AllowMultiple = false,
-                FileTypeFilter = new[]
-                {
-                    new FilePickerFileType("Исполняемые файлы") { Patterns = new[] { "*.exe" } },
-                    new FilePickerFileType("Все файлы") { Patterns = new[] { "*.*" } }
-                }
-            });
+            result = await QuickAppPickerWindow.ShowAsync(this, new PixelPoint(Position.X, Position.Y));
         }
         finally
         {
             _pickerInProgress = false;
         }
 
-        var path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
-        TryComplete(path is not null
-            ? new AssignChoice(AssignChoiceKind.App, path)
-            : new AssignChoice(AssignChoiceKind.Cancelled));
+        TryComplete(result);
     }
 
     private void TryComplete(AssignChoice choice)

@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ScreenSplitter.UI.Views.QuickAppPickerWindow"
+        Width="260" Height="360"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        CanResize="False"
+        WindowStartupLocation="Manual">
+
+  <Border Background="{StaticResource BgPanel}"
+          CornerRadius="10"
+          Padding="14"
+          BorderThickness="1"
+          BorderBrush="{StaticResource LineHairline}"
+          BoxShadow="0 4 14 0 #60000000">
+    <Grid RowDefinitions="Auto,*,Auto,Auto">
+      <TextBlock Grid.Row="0"
+                 Text="ВЫБЕРИТЕ ПРИЛОЖЕНИЕ"
+                 Foreground="{StaticResource TextMuted}"
+                 FontFamily="Consolas" FontSize="10" LetterSpacing="1"
+                 Margin="0,0,0,8" />
+
+      <ScrollViewer Grid.Row="1" MaxHeight="230">
+        <StackPanel x:Name="ItemsPanel" Spacing="6" />
+      </ScrollViewer>
+
+      <Rectangle Grid.Row="2" Height="1" Fill="{StaticResource LineHairline}" Margin="0,10" />
+
+      <Button Grid.Row="3"
+              Content="Обзор... (выбрать .exe вручную)"
+              Classes="action"
+              HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center"
+              Click="OnBrowseClicked" />
+    </Grid>
+  </Border>
+</Window>

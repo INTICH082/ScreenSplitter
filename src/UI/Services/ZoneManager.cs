@@ -19,6 +19,7 @@ public class ZoneManager
 
         public ZoneSlotStatus Status { get; set; } = ZoneSlotStatus.Empty;
         public string? AppPath { get; set; }
+        public string? DisplayName { get; set; }
         public System.Diagnostics.Process? Process { get; set; }
         public IntPtr WindowHandle { get; set; }
     }
@@ -139,23 +140,25 @@ public class ZoneManager
                 break;
 
             case AssignChoiceKind.App when choice.AppPath is not null:
-                await LaunchIntoSlotAsync(slot, choice.AppPath);
+                await LaunchIntoSlotAsync(slot, choice.AppPath, choice.DisplayName);
                 break;
         }
     }
 
-    private async Task LaunchIntoSlotAsync(Slot slot, string appPath)
+    private async Task LaunchIntoSlotAsync(Slot slot, string appPath, string? displayName)
     {
-        chipBusy(slot.Chip, appPath);
+        var fallbackTitle = System.IO.Path.GetFileNameWithoutExtension(appPath);
+        var title = displayName ?? fallbackTitle;
+
+        slot.Chip.Render(ZoneSlotStatus.Assigned, $"Запуск: {title}...");
 
         var (process, handle) = await ProcessWindowLocator.LaunchAndWaitForWindowAsync(appPath);
 
         slot.AppPath = appPath;
+        slot.DisplayName = displayName;
         slot.Process = process;
         slot.WindowHandle = handle;
         slot.Status = ZoneSlotStatus.Assigned;
-
-        var title = System.IO.Path.GetFileNameWithoutExtension(appPath);
 
         if (handle != IntPtr.Zero)
         {
@@ -164,15 +167,13 @@ public class ZoneManager
         }
 
         slot.Chip.Render(ZoneSlotStatus.Assigned, title);
-
-        static void chipBusy(ZoneChipWindow chip, string path) =>
-            chip.Render(ZoneSlotStatus.Assigned, $"Запуск: {System.IO.Path.GetFileNameWithoutExtension(path)}...");
     }
 
     private void OnClearRequested(Slot slot)
     {
         slot.Status = ZoneSlotStatus.Empty;
         slot.AppPath = null;
+        slot.DisplayName = null;
         slot.Process = null;
         slot.WindowHandle = IntPtr.Zero;
         slot.Chip.Render(ZoneSlotStatus.Empty, null);
@@ -206,14 +207,15 @@ public class ZoneManager
     {
         (a.Status, b.Status) = (b.Status, a.Status);
         (a.AppPath, b.AppPath) = (b.AppPath, a.AppPath);
+        (a.DisplayName, b.DisplayName) = (b.DisplayName, a.DisplayName);
         (a.Process, b.Process) = (b.Process, a.Process);
         (a.WindowHandle, b.WindowHandle) = (b.WindowHandle, a.WindowHandle);
 
         if (a.WindowHandle != IntPtr.Zero) PlaceAppWindow(a.WindowHandle, a.Bounds);
         if (b.WindowHandle != IntPtr.Zero) PlaceAppWindow(b.WindowHandle, b.Bounds);
 
-        var aTitle = a.AppPath is null ? null : System.IO.Path.GetFileNameWithoutExtension(a.AppPath);
-        var bTitle = b.AppPath is null ? null : System.IO.Path.GetFileNameWithoutExtension(b.AppPath);
+        var aTitle = a.AppPath is null ? null : (a.DisplayName ?? System.IO.Path.GetFileNameWithoutExtension(a.AppPath));
+        var bTitle = b.AppPath is null ? null : (b.DisplayName ?? System.IO.Path.GetFileNameWithoutExtension(b.AppPath));
 
         a.Chip.Render(a.Status, aTitle);
         b.Chip.Render(b.Status, bTitle);
