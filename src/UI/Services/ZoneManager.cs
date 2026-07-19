@@ -13,7 +13,7 @@ namespace ScreenSplitter.UI.Services;
 public class ZoneManager
 {
     private const double MinFraction = 0.08; // минимальный размер зоны — 8% ширины/высоты области
-    private const int SplitterThickness = 8;
+    private const int SplitterThickness = 5;
 
     private class Slot
     {

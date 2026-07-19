@@ -20,9 +20,10 @@ public partial class ZoneBorderWindow : Window
     public void PlaceAt(PixelRect bounds)
     {
         Position = new PixelPoint(bounds.X, bounds.Y);
-        Width = bounds.Width;
-        Height = bounds.Height;
-        DrawReticle(bounds.Width, bounds.Height);
+        var scaling = DesktopScaling > 0 ? DesktopScaling : 1.0;
+        Width = bounds.Width / scaling;
+        Height = bounds.Height / scaling;
+        DrawReticle(Width, Height);
     }
 
     public void SetIndex(int number)

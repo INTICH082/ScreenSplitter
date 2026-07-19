@@ -35,16 +35,15 @@ public partial class ZoneSplitterWindow : Window
     public void PlaceAt(PixelRect bounds)
     {
         Position = new PixelPoint(bounds.X, bounds.Y);
-        Width = bounds.Width;
-        Height = bounds.Height;
+        var scaling = DesktopScaling > 0 ? DesktopScaling : 1.0;
+        Width = bounds.Width / scaling;
+        Height = bounds.Height / scaling;
     }
 
     private PixelPoint GetScreenPoint(PointerEventArgs e)
     {
         var p = e.GetPosition(this);
-        return new PixelPoint(
-            Position.X + (int)(p.X * RenderScaling),
-            Position.Y + (int)(p.Y * RenderScaling));
+        return new PixelPoint(Position.X + (int)(p.X * RenderScaling), Position.Y + (int)(p.Y * RenderScaling));
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)

@@ -15,7 +15,9 @@ public static class ProcessWindowLocator
         Process? process;
         try
         {
-            process = Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+            var startInfo = IsUrl(target) ? DefaultBrowserLauncher.BuildLaunchInfo(target) : new ProcessStartInfo(target) { UseShellExecute = true };
+
+            process = Process.Start(startInfo);
         }
         catch
         {
@@ -69,6 +71,11 @@ public static class ProcessWindowLocator
 
         return IntPtr.Zero;
     }
+
+    private static bool IsUrl(string target) =>
+        target.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+        target.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+        target.Equals("about:blank", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsUsableWindow(IntPtr hwnd, uint ownProcessId)
     {
