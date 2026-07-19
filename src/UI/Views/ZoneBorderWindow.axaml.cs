@@ -9,7 +9,12 @@ namespace ScreenSplitter.UI.Views;
 public partial class ZoneBorderWindow : Window
 {
     private const double BracketLength = 22;
+    private const double CompactBracketLength = 9;
     private const double Inset = 10;
+
+    private double _lastWidth;
+    private double _lastHeight;
+    private bool _isOccupied;
 
     public ZoneBorderWindow()
     {
@@ -29,6 +34,13 @@ public partial class ZoneBorderWindow : Window
     public void SetIndex(int number)
     {
         IndexLabel.Text = number.ToString("00");
+    }
+
+    public void SetOccupied(bool occupied)
+    {
+        _isOccupied = occupied;
+        ReticleCanvas.Opacity = occupied ? 0.45 : 1.0;
+        DrawReticle(_lastWidth, _lastHeight);
     }
 
     public void SetHighlighted(bool highlighted)
@@ -57,12 +69,16 @@ public partial class ZoneBorderWindow : Window
 
     private void DrawReticle(double width, double height)
     {
+        _lastWidth = width;
+        _lastHeight = height;
+
         var w = Math.Max(0, width - Inset * 2);
         var h = Math.Max(0, height - Inset * 2);
         ReticleCanvas.Width = w;
         ReticleCanvas.Height = h;
 
-        var len = Math.Min(BracketLength, Math.Min(w, h) / 3);
+        var maxLen = _isOccupied ? CompactBracketLength : BracketLength;
+        var len = Math.Min(maxLen, Math.Min(w, h) / 3);
 
         // верх-лево
         SetLine(TL1, 0, 0, len, 0);

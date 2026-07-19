@@ -28,6 +28,7 @@ public class ZoneManager
         public string? DisplayName { get; set; }
         public System.Diagnostics.Process? Process { get; set; }
         public IntPtr WindowHandle { get; set; }
+        public PixelRect? OriginalWindowBounds { get; set; }
         public bool IsDropHighlighted { get; set; }
     }
 
@@ -311,10 +312,14 @@ public class ZoneManager
         slot.DisplayName = GetWindowTitle(hwnd);
         slot.Process = null;
         slot.WindowHandle = hwnd;
+        slot.OriginalWindowBounds = User32.GetWindowRect(hwnd, out var rect)
+            ? new PixelRect(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top)
+            : null;
 
         WindowStyleHelper.PlaceWindowFlush(hwnd, slot.Bounds.X, slot.Bounds.Y, slot.Bounds.Width, slot.Bounds.Height);
 
         slot.Chip.Render(ZoneSlotStatus.Assigned, slot.DisplayName);
+        slot.Border.SetOccupied(true);
     }
 
     private static string GetWindowTitle(IntPtr hwnd)
@@ -395,21 +400,33 @@ public class ZoneManager
 
         if (handle != IntPtr.Zero)
         {
+            slot.OriginalWindowBounds = User32.GetWindowRect(handle, out var rect)
+                ? new PixelRect(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top)
+                : null;
+
             WindowStyleHelper.PlaceWindowFlush(handle, slot.Bounds.X, slot.Bounds.Y, slot.Bounds.Width, slot.Bounds.Height);
             WindowStyleHelper.ActivateWindow(handle);
         }
 
         slot.Chip.Render(ZoneSlotStatus.Assigned, title);
+        slot.Border.SetOccupied(true);
     }
 
     private void OnClearRequested(Slot slot)
     {
+        if (slot.WindowHandle != IntPtr.Zero && slot.OriginalWindowBounds is { } original)
+        {
+            WindowStyleHelper.PlaceWindowFlush(slot.WindowHandle, original.X, original.Y, original.Width, original.Height);
+        }
+
         slot.Status = ZoneSlotStatus.Empty;
         slot.AppPath = null;
         slot.DisplayName = null;
         slot.Process = null;
         slot.WindowHandle = IntPtr.Zero;
+        slot.OriginalWindowBounds = null;
         slot.Chip.Render(ZoneSlotStatus.Empty, null);
+        slot.Border.SetOccupied(false);
     }
 
     private void OnSwapClicked(Slot slot)
@@ -443,6 +460,7 @@ public class ZoneManager
         (a.DisplayName, b.DisplayName) = (b.DisplayName, a.DisplayName);
         (a.Process, b.Process) = (b.Process, a.Process);
         (a.WindowHandle, b.WindowHandle) = (b.WindowHandle, a.WindowHandle);
+        (a.OriginalWindowBounds, b.OriginalWindowBounds) = (b.OriginalWindowBounds, a.OriginalWindowBounds);
 
         if (a.WindowHandle != IntPtr.Zero)
             WindowStyleHelper.PlaceWindowFlush(a.WindowHandle, a.Bounds.X, a.Bounds.Y, a.Bounds.Width, a.Bounds.Height);
@@ -454,6 +472,8 @@ public class ZoneManager
 
         a.Chip.Render(a.Status, aTitle);
         b.Chip.Render(b.Status, bTitle);
+        a.Border.SetOccupied(a.Status == ZoneSlotStatus.Assigned);
+        b.Border.SetOccupied(b.Status == ZoneSlotStatus.Assigned);
     }
 
     public void CloseAllZones() => ClearAll();

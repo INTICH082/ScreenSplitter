@@ -29,6 +29,7 @@ public partial class ZoneChipWindow : Window
     {
         ChipBorder.Classes.Set("free", status == ZoneSlotStatus.Free);
         ChipBorder.Classes.Set("assigned", status == ZoneSlotStatus.Assigned);
+        Classes.Set("compact", status == ZoneSlotStatus.Assigned);
 
         Label.Text = status switch
         {

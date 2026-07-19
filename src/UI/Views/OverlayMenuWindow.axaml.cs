@@ -56,13 +56,13 @@ public partial class OverlayMenuWindow : Window
         new SettingsWindow().Show();
     }
 
-    private const double FullWidth = 92, FullHeight = 196;
+    private const double FullWidth = 182, FullHeight = 86;
     private const double CollapsedSize = 38;
 
     private void OnTaskbarToggleClicked(object? sender, RoutedEventArgs e)
     {
         TaskbarController.Toggle();
-        TaskbarButton.Content = TaskbarController.IsHidden ? "⬓ Показать панель" : "⬓ Панель задач";
+        ToolTip.SetTip(TaskbarButton, TaskbarController.IsHidden ? "Показать панель задач" : "Скрыть панель задач");
         _zoneManager.RecomputeLayout();
     }
 
