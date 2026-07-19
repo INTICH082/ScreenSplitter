@@ -1,23 +1,48 @@
 using System.Diagnostics;
+using ScreenSplitter.Platform.Windows.Native;
 
 namespace ScreenSplitter.Platform.Windows;
 
 public static class ProcessWindowLocator
 {
-    public static async Task<(Process Process, IntPtr Handle)> LaunchAndWaitForWindowAsync(
-        string executablePath,
+    public static async Task<(Process? Process, IntPtr Handle)> LaunchAndWaitForWindowAsync(
+        string target,
         TimeSpan? timeout = null)
     {
-        var startInfo = new ProcessStartInfo(executablePath)
+        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(8));
+        var ownProcessId = (uint)Environment.ProcessId;
+
+        Process? process;
+        try
         {
-            UseShellExecute = true
-        };
+            process = Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+        }
+        catch
+        {
+            process = null;
+        }
 
-        var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException($"Не удалось запустить приложение: {executablePath}");
+        if (process is not null)
+        {
+            var handle = await WaitForMainWindowAsync(process, TimeSpan.FromMilliseconds(1500));
+            if (handle != IntPtr.Zero)
+            {
+                return (process, handle);
+            }
+        }
 
-        var handle = await WaitForMainWindowAsync(process, timeout ?? TimeSpan.FromSeconds(8));
-        return (process, handle);
+        while (DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(150);
+
+            var foreground = User32.GetForegroundWindow();
+            if (IsUsableWindow(foreground, ownProcessId))
+            {
+                return (process, foreground);
+            }
+        }
+
+        return (process, IntPtr.Zero);
     }
 
     public static async Task<IntPtr> WaitForMainWindowAsync(Process process, TimeSpan timeout)
@@ -43,5 +68,15 @@ public static class ProcessWindowLocator
         }
 
         return IntPtr.Zero;
+    }
+
+    private static bool IsUsableWindow(IntPtr hwnd, uint ownProcessId)
+    {
+        if (hwnd == IntPtr.Zero || !User32.IsWindowVisible(hwnd)) return false;
+
+        User32.GetWindowThreadProcessId(hwnd, out var pid);
+        if (pid == ownProcessId) return false;
+
+        return User32.GetWindowTextLength(hwnd) > 0;
     }
 }

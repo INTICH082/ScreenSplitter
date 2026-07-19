@@ -56,10 +56,30 @@ public partial class OverlayMenuWindow : Window
         new SettingsWindow().Show();
     }
 
+    private const double FullWidth = 92, FullHeight = 196;
+    private const double CollapsedSize = 38;
+
     private void OnTaskbarToggleClicked(object? sender, RoutedEventArgs e)
     {
         TaskbarController.Toggle();
         TaskbarButton.Content = TaskbarController.IsHidden ? "⬓ Показать панель" : "⬓ Панель задач";
+        _zoneManager.RecomputeLayout();
+    }
+
+    private void OnCollapseClicked(object? sender, RoutedEventArgs e)
+    {
+        FullPanel.IsVisible = false;
+        CollapsedButton.IsVisible = true;
+        Width = CollapsedSize;
+        Height = CollapsedSize;
+    }
+
+    private void OnExpandClicked(object? sender, RoutedEventArgs e)
+    {
+        CollapsedButton.IsVisible = false;
+        FullPanel.IsVisible = true;
+        Width = FullWidth;
+        Height = FullHeight;
     }
 
     private void OnDragHandlePressed(object? sender, PointerPressedEventArgs e)

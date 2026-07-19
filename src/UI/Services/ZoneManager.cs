@@ -12,10 +12,14 @@ namespace ScreenSplitter.UI.Services;
 
 public class ZoneManager
 {
+    private const double MinFraction = 0.08; // минимальный размер зоны — 8% ширины/высоты области
+    private const int SplitterThickness = 8;
+
     private class Slot
     {
-        public required RelativeZoneRect Relative { get; init; }
-        public required PixelRect Bounds { get; init; }
+        public required int Col { get; init; }
+        public required int Row { get; init; }
+        public required PixelRect Bounds { get; set; }
         public required ZoneBorderWindow Border { get; init; }
         public required ZoneChipWindow Chip { get; init; }
 
@@ -28,11 +32,19 @@ public class ZoneManager
     }
 
     private readonly List<Slot> _slots = new();
+    private readonly List<ZoneSplitterWindow> _colSplitters = new();
+    private readonly List<ZoneSplitterWindow> _rowSplitters = new();
+
     private Slot? _pendingSwap;
     private Window? _screenSource;
     private WindowMoveWatcher? _moveWatcher;
     private DispatcherTimer? _dragHoverTimer;
     private IntPtr _draggedWindow;
+
+    private int _cols;
+    private int _rows;
+    private double[] _colBounds = Array.Empty<double>(); // длины cols+1, значения 0..1
+    private double[] _rowBounds = Array.Empty<double>();
 
     public void AttachScreenSource(Window window)
     {
@@ -59,21 +71,171 @@ public class ZoneManager
     {
         ClearAll();
 
-        var area = _screenSource?.Screens.Primary?.WorkingArea;
+        var area = GetActiveArea();
         if (area is not { } workingArea) return;
 
+        var xs = pattern.Select(r => Math.Round(r.X, 6)).Distinct().OrderBy(v => v).ToList();
+        var ys = pattern.Select(r => Math.Round(r.Y, 6)).Distinct().OrderBy(v => v).ToList();
+
+        _cols = xs.Count;
+        _rows = ys.Count;
+        _colBounds = xs.Append(1.0).ToArray();
+        _rowBounds = ys.Append(1.0).ToArray();
+
+        var index = 1;
         foreach (var rel in pattern)
         {
-            var bounds = new PixelRect(
-                workingArea.X + (int)(rel.X * workingArea.Width),
-                workingArea.Y + (int)(rel.Y * workingArea.Height),
-                (int)(rel.Width * workingArea.Width),
-                (int)(rel.Height * workingArea.Height));
-
-            CreateSlot(rel, bounds, _slots.Count + 1);
+            var col = xs.IndexOf(Math.Round(rel.X, 6));
+            var row = ys.IndexOf(Math.Round(rel.Y, 6));
+            var bounds = ZoneBounds(col, row, workingArea);
+            CreateSlot(col, row, bounds, index++);
         }
 
+        CreateSplitters(workingArea);
         EnsureMoveWatcherStarted();
+    }
+
+    private PixelRect? GetActiveArea()
+    {
+        var screen = _screenSource?.Screens.Primary;
+        if (screen is null) return null;
+
+        return TaskbarController.IsHidden ? screen.Bounds : screen.WorkingArea;
+    }
+
+    private PixelRect ZoneBounds(int col, int row, PixelRect area)
+    {
+        var x0 = _colBounds[col];
+        var x1 = _colBounds[col + 1];
+        var y0 = _rowBounds[row];
+        var y1 = _rowBounds[row + 1];
+
+        return new PixelRect(
+            area.X + (int)(x0 * area.Width),
+            area.Y + (int)(y0 * area.Height),
+            (int)((x1 - x0) * area.Width),
+            (int)((y1 - y0) * area.Height));
+    }
+
+    public void RecomputeLayout() => RepositionAll();
+
+    private void RepositionAll()
+    {
+        if (_slots.Count == 0) return;
+
+        var area = GetActiveArea();
+        if (area is not { } workingArea) return;
+
+        foreach (var slot in _slots)
+        {
+            var bounds = ZoneBounds(slot.Col, slot.Row, workingArea);
+            slot.Bounds = bounds;
+
+            slot.Border.PlaceAt(bounds);
+            slot.Chip.PlaceAt(new PixelPoint(bounds.X + 12, bounds.Y + 12));
+
+            if (slot.WindowHandle != IntPtr.Zero)
+            {
+                WindowStyleHelper.PlaceWindowFlush(slot.WindowHandle, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+            }
+        }
+
+        for (int i = 0; i < _colSplitters.Count; i++)
+        {
+            PositionColumnSplitter(_colSplitters[i], i + 1, workingArea);
+        }
+        for (int j = 0; j < _rowSplitters.Count; j++)
+        {
+            PositionRowSplitter(_rowSplitters[j], j + 1, workingArea);
+        }
+    }
+
+    // --- Разделители между зонами (изменение размера "выдавливанием" соседей) ---
+
+    private void CreateSplitters(PixelRect area)
+    {
+        for (int i = 1; i < _cols; i++)
+        {
+            CreateColumnSplitter(i, area);
+        }
+        for (int j = 1; j < _rows; j++)
+        {
+            CreateRowSplitter(j, area);
+        }
+    }
+
+    private void CreateColumnSplitter(int boundaryIndex, PixelRect area)
+    {
+        var splitter = new ZoneSplitterWindow(ZoneSplitterWindow.SplitterOrientation.Vertical);
+        splitter.Show();
+        PositionColumnSplitter(splitter, boundaryIndex, area);
+
+        double startFraction = 0;
+        splitter.DragStarted += () => startFraction = _colBounds[boundaryIndex];
+        splitter.DragDelta += delta =>
+        {
+            var a = GetActiveArea();
+            if (a is not { } ar || ar.Width <= 0) return;
+            SetColumnBoundary(boundaryIndex, startFraction + delta / ar.Width);
+        };
+
+        _colSplitters.Add(splitter);
+    }
+
+    private void CreateRowSplitter(int boundaryIndex, PixelRect area)
+    {
+        var splitter = new ZoneSplitterWindow(ZoneSplitterWindow.SplitterOrientation.Horizontal);
+        splitter.Show();
+        PositionRowSplitter(splitter, boundaryIndex, area);
+
+        double startFraction = 0;
+        splitter.DragStarted += () => startFraction = _rowBounds[boundaryIndex];
+        splitter.DragDelta += delta =>
+        {
+            var a = GetActiveArea();
+            if (a is not { } ar || ar.Height <= 0) return;
+            SetRowBoundary(boundaryIndex, startFraction + delta / ar.Height);
+        };
+
+        _rowSplitters.Add(splitter);
+    }
+
+    private void PositionColumnSplitter(ZoneSplitterWindow splitter, int boundaryIndex, PixelRect area)
+    {
+        var x = area.X + (int)(_colBounds[boundaryIndex] * area.Width) - SplitterThickness / 2;
+        splitter.PlaceAt(new PixelRect(x, area.Y, SplitterThickness, area.Height));
+    }
+
+    private void PositionRowSplitter(ZoneSplitterWindow splitter, int boundaryIndex, PixelRect area)
+    {
+        var y = area.Y + (int)(_rowBounds[boundaryIndex] * area.Height) - SplitterThickness / 2;
+        splitter.PlaceAt(new PixelRect(area.X, y, area.Width, SplitterThickness));
+    }
+
+    private void SetColumnBoundary(int boundaryIndex, double newFraction)
+    {
+        var min = _colBounds[boundaryIndex - 1] + MinFraction;
+        var max = _colBounds[boundaryIndex + 1] - MinFraction;
+        if (min > max) return;
+
+        newFraction = Math.Clamp(newFraction, min, max);
+        if (Math.Abs(newFraction - _colBounds[boundaryIndex]) < 1e-6) return;
+
+        _colBounds[boundaryIndex] = newFraction;
+        RepositionAll();
+    }
+
+    private void SetRowBoundary(int boundaryIndex, double newFraction)
+    {
+        var min = _rowBounds[boundaryIndex - 1] + MinFraction;
+        var max = _rowBounds[boundaryIndex + 1] - MinFraction;
+        if (min > max) return;
+
+        newFraction = Math.Clamp(newFraction, min, max);
+        if (Math.Abs(newFraction - _rowBounds[boundaryIndex]) < 1e-6) return;
+
+        _rowBounds[boundaryIndex] = newFraction;
+        RepositionAll();
     }
 
     // --- Перетаскивание окон и подсветка зон-целей ---
@@ -171,7 +333,7 @@ public class ZoneManager
 
     // --- Создание зон ---
 
-    private void CreateSlot(RelativeZoneRect relative, PixelRect bounds, int index)
+    private void CreateSlot(int col, int row, PixelRect bounds, int index)
     {
         var border = new ZoneBorderWindow();
         border.Show();
@@ -185,7 +347,8 @@ public class ZoneManager
 
         var slot = new Slot
         {
-            Relative = relative,
+            Col = col,
+            Row = row,
             Bounds = bounds,
             Border = border,
             Chip = chip
@@ -304,6 +467,16 @@ public class ZoneManager
             slot.Chip.Close();
         }
         _slots.Clear();
+
+        foreach (var splitter in _colSplitters) splitter.Close();
+        foreach (var splitter in _rowSplitters) splitter.Close();
+        _colSplitters.Clear();
+        _rowSplitters.Clear();
+
+        _cols = 0;
+        _rows = 0;
+        _colBounds = Array.Empty<double>();
+        _rowBounds = Array.Empty<double>();
 
         _dragHoverTimer?.Stop();
         _dragHoverTimer = null;
