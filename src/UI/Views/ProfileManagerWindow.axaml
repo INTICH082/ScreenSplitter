@@ -1,0 +1,37 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ScreenSplitter.UI.Views.ProfileManagerWindow"
+        Title="Сценарии ScreenSplitter"
+        Width="360" Height="420"
+        Background="{StaticResource BgPanel}"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False">
+
+  <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="18">
+    <TextBlock Grid.Row="0"
+               Text="СОХРАНЁННЫЕ СЦЕНАРИИ"
+               Foreground="{StaticResource TextMuted}"
+               FontFamily="Consolas" FontSize="10.5" LetterSpacing="1"
+               Margin="0,0,0,10" />
+
+    <ScrollViewer Grid.Row="1">
+      <StackPanel x:Name="ProfilesPanel" Spacing="8" />
+    </ScrollViewer>
+
+    <Rectangle Grid.Row="2" Height="1" Fill="{StaticResource LineHairline}" Margin="0,14" />
+
+    <StackPanel Grid.Row="3" Spacing="8">
+      <TextBlock Text="Сохранить текущую разбивку как новый сценарий:"
+                 Foreground="{StaticResource TextPrimary}"
+                 FontSize="11.5" TextWrapping="Wrap" />
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBox x:Name="NewProfileNameBox" Grid.Column="0" Watermark="Например: Работа" />
+        <Button Grid.Column="1" Content="Сохранить" Classes="primary" Margin="8,0,0,0" Click="OnSaveCurrentClicked" />
+      </Grid>
+      <TextBlock x:Name="HintLabel"
+                 Text="Совет: сначала разбей экран и назначь приложения через «▦», затем сохрани получившийся результат здесь как сценарий."
+                 Foreground="{StaticResource TextMuted}"
+                 FontSize="10.5" TextWrapping="Wrap" />
+    </StackPanel>
+  </Grid>
+</Window>

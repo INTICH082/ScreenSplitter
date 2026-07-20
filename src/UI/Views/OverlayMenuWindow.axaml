@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ScreenSplitter.UI.Views.OverlayMenuWindow"
-        Width="182" Height="86"
+        Width="230" Height="112"
         SystemDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
@@ -69,10 +69,21 @@
         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
           <Button Content="▦" Classes="icon-btn" Click="OnZonesClicked"
                   ToolTip.Tip="Разбить экран на зоны" />
+          <Button Content="☰" Classes="icon-btn" Click="OnScenariosClicked"
+                  ToolTip.Tip="Сценарии" />
           <Button x:Name="TaskbarButton" Content="⬓" Classes="icon-btn" Click="OnTaskbarToggleClicked"
                   ToolTip.Tip="Скрыть/показать панель задач" />
           <Button Content="⚙" Classes="icon-btn" Click="OnSettingsClicked"
                   ToolTip.Tip="Настройки" />
+        </StackPanel>
+
+        <Rectangle Height="1" Fill="{StaticResource LineHairline}" HorizontalAlignment="Stretch" />
+
+        <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center">
+          <TextBlock x:Name="CpuLabel" Text="CPU --%" Foreground="{StaticResource TextMuted}"
+                     FontFamily="Consolas" FontSize="10" />
+          <TextBlock x:Name="GpuLabel" Text="GPU --%" Foreground="{StaticResource TextMuted}"
+                     FontFamily="Consolas" FontSize="10" />
         </StackPanel>
       </StackPanel>
     </Border>

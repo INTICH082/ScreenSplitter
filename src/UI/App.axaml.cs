@@ -15,6 +15,8 @@ public partial class App : Application
     private OverlayMenuWindow? _overlayWindow;
     private readonly ZoneManager _zoneManager = new();
     private GlobalHotKeyManager? _hotKeys;
+    private DisplayChangeWatcher? _displayWatcher;
+    private readonly List<int> _profileHotkeyIds = new();
 
     public override void Initialize()
     {
@@ -32,6 +34,8 @@ public partial class App : Application
             _overlayWindow.Show();
 
             RegisterEmergencyHotKeys();
+            RegisterDisplayChangeWatcher();
+            RebuildProfileHotkeys();
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -51,6 +55,45 @@ public partial class App : Application
         catch
         {
             // Комбинация уже занята другой программой — не критично, приложение продолжает работать без неё.
+        }
+    }
+
+    private void RegisterDisplayChangeWatcher()
+    {
+        var handle = _overlayWindow?.TryGetPlatformHandle();
+        if (handle is null || handle.Handle == IntPtr.Zero) return;
+
+        _displayWatcher = new DisplayChangeWatcher(handle.Handle);
+        _displayWatcher.DisplayChanged += () => _zoneManager.RecomputeLayout();
+    }
+
+    public void RebuildProfileHotkeys()
+    {
+        if (_hotKeys is null) return;
+
+        foreach (var id in _profileHotkeyIds)
+        {
+            _hotKeys.Unregister(id);
+        }
+        _profileHotkeyIds.Clear();
+
+        var profiles = ProfileStore.LoadAll();
+        foreach (var profile in profiles)
+        {
+            if (profile.HotkeyDigit is not { } digit || digit is < 1 or > 9) continue;
+
+            try
+            {
+                var id = _hotKeys.Register(
+                    User32.MOD_CONTROL | User32.MOD_ALT,
+                    (uint)('0' + digit),
+                    () => _ = _zoneManager.ApplyProfileAsync(profile));
+                _profileHotkeyIds.Add(id);
+            }
+            catch
+            {
+                // комбинация занята — пропускаем именно этот сценарий, остальные продолжают работать
+            }
         }
     }
 
@@ -84,6 +127,11 @@ public partial class App : Application
         new ZonePatternPickerWindow(_zoneManager).Show();
     }
 
+    private void OnScenariosMenuClicked(object? sender, System.EventArgs e)
+    {
+        new ProfileManagerWindow(_zoneManager, RebuildProfileHotkeys).Show();
+    }
+
     private void OnSettingsMenuClicked(object? sender, System.EventArgs e)
     {
         new SettingsWindow().Show();
@@ -92,6 +140,7 @@ public partial class App : Application
     private void OnExit(object? sender, System.EventArgs e)
     {
         _hotKeys?.Dispose();
+        _displayWatcher?.Dispose();
         _zoneManager.CloseAllZones();
         if (TaskbarController.IsHidden) TaskbarController.Show();
 

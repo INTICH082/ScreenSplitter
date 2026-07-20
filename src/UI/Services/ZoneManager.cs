@@ -68,6 +68,54 @@ public class ZoneManager
         Apply(LayoutPresets.BuildGrid(cols, rows));
     }
 
+    public Profile? CaptureCurrentAsProfile(string name)
+    {
+        if (_slots.Count == 0 || _cols == 0 || _rows == 0) return null;
+
+        var assignments = _slots.Select(s => new ZoneAssignment(
+            s.Col,
+            s.Row,
+            s.Status switch
+            {
+                ZoneSlotStatus.Free => ZoneAssignmentKind.Free,
+                ZoneSlotStatus.Assigned => ZoneAssignmentKind.App,
+                _ => ZoneAssignmentKind.Empty
+            },
+            s.AppPath,
+            s.DisplayName)).ToList();
+
+        return new Profile
+        {
+            Name = name,
+            Cols = _cols,
+            Rows = _rows,
+            Assignments = assignments
+        };
+    }
+
+    public async Task ApplyProfileAsync(Profile profile)
+    {
+        Apply(LayoutPresets.BuildGrid(profile.Cols, profile.Rows));
+
+        foreach (var assignment in profile.Assignments)
+        {
+            var slot = _slots.FirstOrDefault(s => s.Col == assignment.Col && s.Row == assignment.Row);
+            if (slot is null) continue;
+
+            switch (assignment.Kind)
+            {
+                case ZoneAssignmentKind.Free:
+                    slot.Status = ZoneSlotStatus.Free;
+                    slot.Chip.Render(ZoneSlotStatus.Free, null);
+                    break;
+
+                case ZoneAssignmentKind.App when assignment.Target is not null:
+                    await LaunchIntoSlotAsync(slot, assignment.Target, assignment.DisplayName);
+                    break;
+            }
+        }
+    }
+
     private void Apply(IReadOnlyList<RelativeZoneRect> pattern)
     {
         ClearAll();

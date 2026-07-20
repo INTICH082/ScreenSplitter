@@ -72,6 +72,7 @@
                 </NativeMenu>
               </NativeMenuItem.Menu>
             </NativeMenuItem>
+            <NativeMenuItem Header="Сценарии..." Click="OnScenariosMenuClicked" />
             <NativeMenuItem Header="Настройки..." Click="OnSettingsMenuClicked" />
             <NativeMenuItemSeparator />
             <NativeMenuItem Header="Выход" Click="OnExit" />
