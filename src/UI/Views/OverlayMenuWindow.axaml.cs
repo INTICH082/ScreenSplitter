@@ -100,7 +100,21 @@ public partial class OverlayMenuWindow : Window
         Height = CollapsedSize;
     }
 
-    private void OnExpandClicked(object? sender, RoutedEventArgs e)
+    private void OnCollapsedPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+
+        var positionBeforeDrag = Position;
+        BeginMoveDrag(e); // блокирует выполнение до отпускания кнопки мыши
+
+        // Если за время перетаскивания окно реально не сдвинулось — считаем это обычным кликом.
+        if (Position == positionBeforeDrag)
+        {
+            ExpandPanel();
+        }
+    }
+
+    private void ExpandPanel()
     {
         CollapsedButton.IsVisible = false;
         FullPanel.IsVisible = true;

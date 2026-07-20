@@ -88,18 +88,18 @@
       </StackPanel>
     </Border>
 
-    <!-- Свёрнутое состояние: маленькая кнопка раскрытия -->
-    <Button x:Name="CollapsedButton"
+    <!-- Свёрнутое состояние: маленькая кнопка раскрытия, которую тоже можно таскать -->
+    <Border x:Name="CollapsedButton"
             Width="38" Height="38"
             CornerRadius="19"
             Background="{StaticResource BgPanel}"
             BorderBrush="{StaticResource AccentSignal}"
             BorderThickness="1.5"
-            Padding="0"
             IsVisible="False"
-            Click="OnExpandClicked"
-            ToolTip.Tip="Открыть панель ScreenSplitter">
+            PointerPressed="OnCollapsedPointerPressed"
+            Cursor="Hand"
+            ToolTip.Tip="Перетащить / открыть панель ScreenSplitter">
       <TextBlock Text="⠿" Foreground="{StaticResource AccentSignal}" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
-    </Button>
+    </Border>
   </Grid>
 </Window>
