@@ -8,6 +8,7 @@ namespace ScreenSplitter.UI.Views;
 public partial class ZonePatternPickerWindow : Window
 {
     private readonly ZoneManager _zoneManager;
+    private bool _initializingScreenList = true;
 
     public ZonePatternPickerWindow() : this(new ZoneManager())
     {
@@ -17,6 +18,22 @@ public partial class ZonePatternPickerWindow : Window
     {
         InitializeComponent();
         _zoneManager = zoneManager;
+        PopulateScreenList();
+    }
+
+    private void PopulateScreenList()
+    {
+        _initializingScreenList = true;
+        ScreenComboBox.ItemsSource = _zoneManager.GetAvailableScreenDescriptions();
+        var current = _zoneManager.GetTargetScreenIndex();
+        ScreenComboBox.SelectedIndex = current >= 0 && current < ScreenComboBox.ItemCount ? current : 0;
+        _initializingScreenList = false;
+    }
+
+    private void OnScreenSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_initializingScreenList) return;
+        _zoneManager.SetTargetScreenIndex(ScreenComboBox.SelectedIndex);
     }
 
     private void OnSingleClicked(object? sender, RoutedEventArgs e)

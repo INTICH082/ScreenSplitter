@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media.Imaging;
 using ScreenSplitter.Platform.Windows;
 using ScreenSplitter.UI.Services;
 
@@ -25,7 +26,7 @@ public partial class ZoneChipWindow : Window
         Position = topLeft;
     }
 
-    public void Render(ZoneSlotStatus status, string? title)
+    public void Render(ZoneSlotStatus status, string? title, byte[]? iconPngBytes = null)
     {
         ChipBorder.Classes.Set("free", status == ZoneSlotStatus.Free);
         ChipBorder.Classes.Set("assigned", status == ZoneSlotStatus.Assigned);
@@ -40,6 +41,25 @@ public partial class ZoneChipWindow : Window
         };
 
         ClearButton.IsVisible = status != ZoneSlotStatus.Empty;
+
+        if (iconPngBytes is not null)
+        {
+            try
+            {
+                using var stream = new System.IO.MemoryStream(iconPngBytes);
+                AppIcon.Source = new Bitmap(stream);
+                AppIcon.IsVisible = true;
+                StatusDot.IsVisible = false;
+                return;
+            }
+            catch
+            {
+                // если декодировать не удалось — просто покажем точку-индикатор вместо иконки
+            }
+        }
+
+        AppIcon.IsVisible = false;
+        StatusDot.IsVisible = true;
     }
 
     public void SetSelectedForSwap(bool selected)

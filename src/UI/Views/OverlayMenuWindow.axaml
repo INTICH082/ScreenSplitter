@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ScreenSplitter.UI.Views.OverlayMenuWindow"
-        Width="230" Height="112"
+        Width="230" Height="140"
         SystemDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
@@ -10,6 +10,13 @@
         CanResize="False"
         ShowActivated="False"
         WindowStartupLocation="Manual">
+
+  <Window.Transitions>
+    <Transitions>
+      <DoubleTransition Property="Width" Duration="0:0:0.18" Easing="CubicEaseOut" />
+      <DoubleTransition Property="Height" Duration="0:0:0.18" Easing="CubicEaseOut" />
+    </Transitions>
+  </Window.Transitions>
 
   <Window.Styles>
     <Style Selector="Button.icon-btn">
@@ -85,6 +92,20 @@
           <TextBlock x:Name="GpuLabel" Text="GPU --%" Foreground="{StaticResource TextMuted}"
                      FontFamily="Consolas" FontSize="10" />
         </StackPanel>
+
+        <Border x:Name="UpdateNotice"
+                Background="{StaticResource BgPanelAlt}"
+                CornerRadius="6"
+                Padding="6,4"
+                IsVisible="False"
+                Cursor="Hand"
+                PointerPressed="OnUpdateNoticeClicked">
+          <TextBlock x:Name="UpdateNoticeLabel"
+                     Text="🔔 Доступно обновление"
+                     Foreground="{StaticResource AccentSignal}"
+                     FontFamily="Consolas" FontSize="9.5"
+                     HorizontalAlignment="Center" />
+        </Border>
       </StackPanel>
     </Border>
 

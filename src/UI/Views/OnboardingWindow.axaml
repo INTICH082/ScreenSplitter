@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ScreenSplitter.UI.Views.OnboardingWindow"
+        Title="Добро пожаловать в ScreenSplitter"
+        Width="380" Height="360"
+        Background="{StaticResource BgPanel}"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False">
+
+  <StackPanel Margin="22" Spacing="14">
+    <TextBlock Text="ScreenSplitter" FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+               Foreground="{StaticResource AccentSignal}" />
+    <TextBlock Text="Как это работает — коротко:" Foreground="{StaticResource TextPrimary}" FontSize="12.5" FontWeight="SemiBold" />
+
+    <StackPanel Spacing="10">
+      <TextBlock Foreground="{StaticResource TextPrimary}" FontSize="11.5" TextWrapping="Wrap">
+        <Run Text="1." Foreground="{StaticResource AccentSignal}" FontFamily="Consolas" />
+        <Run Text=" Нажми «▦» в панели справа сверху — экран разобьётся на зоны." />
+      </TextBlock>
+      <TextBlock Foreground="{StaticResource TextPrimary}" FontSize="11.5" TextWrapping="Wrap">
+        <Run Text="2." Foreground="{StaticResource AccentSignal}" FontFamily="Consolas" />
+        <Run Text=" В любой зоне нажми «+» — выбери приложение из списка или свободный доступ." />
+      </TextBlock>
+      <TextBlock Foreground="{StaticResource TextPrimary}" FontSize="11.5" TextWrapping="Wrap">
+        <Run Text="3." Foreground="{StaticResource AccentSignal}" FontFamily="Consolas" />
+        <Run Text=" Можно просто перетащить любое открытое окно за заголовок прямо в зону — оно само подстроится." />
+      </TextBlock>
+      <TextBlock Foreground="{StaticResource TextPrimary}" FontSize="11.5" TextWrapping="Wrap">
+        <Run Text="4." Foreground="{StaticResource AccentSignal}" FontFamily="Consolas" />
+        <Run Text=" Понравившуюся раскладку можно сохранить как сценарий («☰») и вызывать её потом одним хоткеем." />
+      </TextBlock>
+    </StackPanel>
+
+    <TextBlock Text="Экстренный выход в любой момент: Ctrl+Alt+Esc"
+               Foreground="{StaticResource TextMuted}" FontFamily="Consolas" FontSize="10.5" />
+
+    <Button Content="Понятно, начать" Classes="primary" HorizontalAlignment="Stretch"
+            HorizontalContentAlignment="Center" Click="OnCloseClicked" />
+  </StackPanel>
+</Window>

@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Platform.Storage;
 using ScreenSplitter.Core.Models;
 using ScreenSplitter.Platform.Windows;
 using ScreenSplitter.UI.Services;
@@ -13,7 +14,9 @@ public partial class ProfileManagerWindow : Window
     private readonly Action _onProfilesChanged;
     private List<Profile> _profiles;
 
-    public ProfileManagerWindow() : this(new ZoneManager(), () => { }){}
+    public ProfileManagerWindow() : this(new ZoneManager(), () => { })
+    {
+    }
 
     public ProfileManagerWindow(ZoneManager zoneManager, Action onProfilesChanged)
     {
@@ -145,5 +148,75 @@ public partial class ProfileManagerWindow : Window
 
         NewProfileNameBox.Text = "";
         RenderList();
+    }
+
+    private async void OnExportClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_profiles.Count == 0)
+        {
+            HintLabel.Text = "Пока нечего экспортировать — нет сохранённых сценариев.";
+            return;
+        }
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Экспорт сценариев ScreenSplitter",
+            SuggestedFileName = "screensplitter-scenarios.json",
+            FileTypeChoices = new[] { new FilePickerFileType("JSON") { Patterns = new[] { "*.json" } } }
+        });
+        if (file is null) return;
+
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(_profiles, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            await using var stream = await file.OpenWriteAsync();
+            await using var writer = new System.IO.StreamWriter(stream);
+            await writer.WriteAsync(json);
+            HintLabel.Text = $"Экспортировано сценариев: {_profiles.Count}.";
+        }
+        catch
+        {
+            HintLabel.Text = "Не удалось сохранить файл экспорта.";
+        }
+    }
+
+    private async void OnImportClicked(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Импорт сценариев ScreenSplitter",
+            AllowMultiple = false,
+            FileTypeFilter = new[] { new FilePickerFileType("JSON") { Patterns = new[] { "*.json" } } }
+        });
+        if (files.Count == 0) return;
+
+        try
+        {
+            await using var stream = await files[0].OpenReadAsync();
+            using var reader = new System.IO.StreamReader(stream);
+            var json = await reader.ReadToEndAsync();
+            var imported = System.Text.Json.JsonSerializer.Deserialize<List<Profile>>(json);
+            if (imported is null || imported.Count == 0)
+            {
+                HintLabel.Text = "Файл не содержит сценариев.";
+                return;
+            }
+
+            // Сценарии с совпадающим именем перезаписываются импортированной версией.
+            foreach (var profile in imported)
+            {
+                _profiles.RemoveAll(p => p.Name == profile.Name);
+                _profiles.Add(profile);
+            }
+
+            ProfileStore.SaveAll(_profiles);
+            _onProfilesChanged();
+            HintLabel.Text = $"Импортировано сценариев: {imported.Count}.";
+            RenderList();
+        }
+        catch
+        {
+            HintLabel.Text = "Не удалось прочитать файл — проверь, что это корректный экспорт ScreenSplitter.";
+        }
     }
 }

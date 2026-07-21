@@ -36,9 +36,48 @@ public partial class App : Application
             RegisterEmergencyHotKeys();
             RegisterDisplayChangeWatcher();
             RebuildProfileHotkeys();
+            ShowOnboardingIfFirstLaunch();
+            _ = CheckForUpdatesAsync();
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void ShowOnboardingIfFirstLaunch()
+    {
+        try
+        {
+            var dir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ScreenSplitter");
+            System.IO.Directory.CreateDirectory(dir);
+            var marker = System.IO.Path.Combine(dir, "onboarded.flag");
+
+            if (System.IO.File.Exists(marker)) return;
+
+            System.IO.File.WriteAllText(marker, DateTime.UtcNow.ToString("O"));
+            new OnboardingWindow().Show();
+        }
+        catch
+        {
+            // если не удалось создать маркер — лучше молча пропустить онбординг, чем упасть
+        }
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0);
+            var update = await UpdateChecker.CheckForNewerVersionAsync(currentVersion);
+            if (update is not null)
+            {
+                _overlayWindow?.ShowUpdateAvailable(update.TagName, update.HtmlUrl);
+            }
+        }
+        catch
+        {
+            // проверка обновлений не должна мешать работе приложения
+        }
     }
 
     private void RegisterEmergencyHotKeys()
@@ -54,7 +93,7 @@ public partial class App : Application
         }
         catch
         {
-            // Комбинация уже занята другой программой — не критично, приложение продолжает работать без неё.
+            // Комбинация уже занята другой программой — не критично, приложение продолжает работать без неё
         }
     }
 
@@ -66,6 +105,9 @@ public partial class App : Application
         _displayWatcher = new DisplayChangeWatcher(handle.Handle);
         _displayWatcher.DisplayChanged += () => _zoneManager.RecomputeLayout();
     }
+
+    /// Перечитывает сохранённые сценарии и перерегистрирует их горячие клавиши (Ctrl+Alt+1..9).
+    /// Вызывается при старте и после любых изменений в окне управления сценариями
 
     public void RebuildProfileHotkeys()
     {

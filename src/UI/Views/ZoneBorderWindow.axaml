@@ -11,6 +11,7 @@
         WindowStartupLocation="Manual">
 
   <Grid>
+    <!-- Заливка-подсветка зоны как цели для перетаскивания (видна только во время drag) -->
     <Rectangle x:Name="DropHighlightFill"
                Fill="#334FD1C5"
                IsVisible="False" />
@@ -22,6 +23,11 @@
 
     <Grid Margin="10">
       <Canvas x:Name="ReticleCanvas">
+        <Canvas.Transitions>
+          <Transitions>
+            <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CubicEaseOut" />
+          </Transitions>
+        </Canvas.Transitions>
         <!-- верх-лево -->
         <Line x:Name="TL1" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
         <Line x:Name="TL2" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />

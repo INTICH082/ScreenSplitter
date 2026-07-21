@@ -2,12 +2,19 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ScreenSplitter.UI.Views.ZonePatternPickerWindow"
         Title="Разбить экран"
-        Width="320" Height="400"
+        Width="320" Height="450"
         Background="{StaticResource BgPanel}"
         WindowStartupLocation="CenterScreen"
         CanResize="False">
 
   <StackPanel Margin="18" Spacing="10">
+    <TextBlock Text="МОНИТОР"
+               Foreground="{StaticResource TextMuted}"
+               FontFamily="Consolas" FontSize="10.5" LetterSpacing="1" />
+    <ComboBox x:Name="ScreenComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnScreenSelectionChanged" />
+
+    <Rectangle Height="1" Fill="{StaticResource LineHairline}" Margin="0,4" />
+
     <TextBlock Text="ГОТОВЫЕ ВАРИАНТЫ"
                Foreground="{StaticResource TextMuted}"
                FontFamily="Consolas" FontSize="10.5" LetterSpacing="1" />

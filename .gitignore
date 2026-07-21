@@ -2,5 +2,7 @@ bin/
 obj/
 .vs/
 *.user
+
 publish/
 installer/Output/
+*.pdb

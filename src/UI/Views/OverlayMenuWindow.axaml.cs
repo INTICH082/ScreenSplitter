@@ -82,8 +82,28 @@ public partial class OverlayMenuWindow : Window
         new SettingsWindow().Show();
     }
 
-    private const double FullWidth = 230, FullHeight = 112;
+    private const double FullWidth = 230, FullHeight = 140;
     private const double CollapsedSize = 38;
+
+    private string? _updateUrl;
+
+    ///Показывает ненавязчивое уведомление о доступной новой версии в панели.
+    public void ShowUpdateAvailable(string tagName, string url)
+    {
+        _updateUrl = url;
+        UpdateNoticeLabel.Text = $"🔔 Доступна {tagName}";
+        UpdateNotice.IsVisible = true;
+    }
+
+    private void OnUpdateNoticeClicked(object? sender, PointerPressedEventArgs e)
+    {
+        if (_updateUrl is null) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_updateUrl) { UseShellExecute = true });
+        }
+        catch { /* best effort */ }
+    }
 
     private void OnTaskbarToggleClicked(object? sender, RoutedEventArgs e)
     {

@@ -2,25 +2,29 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ScreenSplitter.UI.Views.ProfileManagerWindow"
         Title="Сценарии ScreenSplitter"
-        Width="360" Height="420"
+        Width="360" Height="440"
         Background="{StaticResource BgPanel}"
         WindowStartupLocation="CenterScreen"
         CanResize="False">
 
-  <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="18">
-    <TextBlock Grid.Row="0"
-               Text="СОХРАНЁННЫЕ СЦЕНАРИИ"
-               Foreground="{StaticResource TextMuted}"
-               FontFamily="Consolas" FontSize="10.5" LetterSpacing="1"
-               Margin="0,0,0,10" />
+  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="18">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
+      <TextBlock Grid.Column="0"
+                 Text="СОХРАНЁННЫЕ СЦЕНАРИИ"
+                 Foreground="{StaticResource TextMuted}"
+                 FontFamily="Consolas" FontSize="10.5" LetterSpacing="1"
+                 VerticalAlignment="Center" />
+      <Button Grid.Column="1" Content="⇩ Импорт" Classes="action" FontSize="10" Padding="8,4" Margin="6,0,0,0" Click="OnImportClicked" />
+      <Button Grid.Column="2" Content="⇧ Экспорт" Classes="action" FontSize="10" Padding="8,4" Margin="6,0,0,0" Click="OnExportClicked" />
+    </Grid>
 
-    <ScrollViewer Grid.Row="1">
+    <ScrollViewer Grid.Row="2">
       <StackPanel x:Name="ProfilesPanel" Spacing="8" />
     </ScrollViewer>
 
-    <Rectangle Grid.Row="2" Height="1" Fill="{StaticResource LineHairline}" Margin="0,14" />
+    <Rectangle Grid.Row="3" Height="1" Fill="{StaticResource LineHairline}" Margin="0,14" />
 
-    <StackPanel Grid.Row="3" Spacing="8">
+    <StackPanel Grid.Row="4" Spacing="8">
       <TextBlock Text="Сохранить текущую разбивку как новый сценарий:"
                  Foreground="{StaticResource TextPrimary}"
                  FontSize="11.5" TextWrapping="Wrap" />

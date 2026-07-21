@@ -1,6 +1,7 @@
 using System.Text;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using ScreenSplitter.Core;
 using ScreenSplitter.Core.Models;
@@ -29,6 +30,7 @@ public class ZoneManager
         public System.Diagnostics.Process? Process { get; set; }
         public IntPtr WindowHandle { get; set; }
         public PixelRect? OriginalWindowBounds { get; set; }
+        public byte[]? IconBytes { get; set; }
         public bool IsDropHighlighted { get; set; }
     }
 
@@ -40,7 +42,9 @@ public class ZoneManager
     private Window? _screenSource;
     private WindowMoveWatcher? _moveWatcher;
     private DispatcherTimer? _dragHoverTimer;
+    private DispatcherTimer? _livenessTimer;
     private IntPtr _draggedWindow;
+    private int _targetScreenIndex = -1; // -1 = основной монитор (Primary)
 
     private int _cols;
     private int _rows;
@@ -50,6 +54,41 @@ public class ZoneManager
     public void AttachScreenSource(Window window)
     {
         _screenSource = window;
+    }
+
+    /// Список доступных мониторов для отображения в выборе ("Монитор 1 (1920x1080)" и т.д.)
+    public IReadOnlyList<string> GetAvailableScreenDescriptions()
+    {
+        var screens = _screenSource?.Screens.All;
+        if (screens is null) return Array.Empty<string>();
+
+        return screens.Select((s, i) =>
+        {
+            var primaryMark = s.IsPrimary ? " — основной" : "";
+            return $"Монитор {i + 1} ({s.Bounds.Width}x{s.Bounds.Height}){primaryMark}";
+        }).ToList();
+    }
+
+    public int GetTargetScreenIndex() => _targetScreenIndex;
+
+    /// Выбирает монитор для разбивки на зоны. -1 — использовать основной монитор
+    public void SetTargetScreenIndex(int index)
+    {
+        _targetScreenIndex = index;
+        RecomputeLayout();
+    }
+
+    private Screen? GetTargetScreen()
+    {
+        var screens = _screenSource?.Screens;
+        if (screens is null) return null;
+
+        if (_targetScreenIndex < 0 || _targetScreenIndex >= screens.All.Count)
+        {
+            return screens.Primary;
+        }
+
+        return screens.All[_targetScreenIndex];
     }
 
     public void ApplyPattern(ZonePatternType type)
@@ -67,6 +106,9 @@ public class ZoneManager
     {
         Apply(LayoutPresets.BuildGrid(cols, rows));
     }
+
+    /// Сохраняет текущую разбивку и назначения зон как сценарий с заданным именем.
+    /// Возвращает null, если сейчас нет активной разбивки (экран не разделён)
 
     public Profile? CaptureCurrentAsProfile(string name)
     {
@@ -92,6 +134,9 @@ public class ZoneManager
             Assignments = assignments
         };
     }
+
+    /// Применяет сохранённый сценарий: разбивает экран на нужную сетку и запускает/назначает
+    /// всё, что было сохранено для каждой зоны.
 
     public async Task ApplyProfileAsync(Profile profile)
     {
@@ -142,11 +187,49 @@ public class ZoneManager
 
         CreateSplitters(workingArea);
         EnsureMoveWatcherStarted();
+        EnsureLivenessTimerStarted();
     }
+
+    /// Периодически проверяет, не закрылось ли окно, занимающее зону (пользователь мог
+    /// закрыть его напрямую крестиком, а не через открепление в ScreenSplitter) — если да, зона
+    /// автоматически возвращается в пустое состояние
+
+    private void EnsureLivenessTimerStarted()
+    {
+        if (_livenessTimer is not null) return;
+
+        _livenessTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _livenessTimer.Tick += (_, _) => CheckForClosedWindows();
+        _livenessTimer.Start();
+    }
+
+    private void CheckForClosedWindows()
+    {
+        foreach (var slot in _slots.ToList())
+        {
+            if (slot.Status == ZoneSlotStatus.Assigned
+                && slot.WindowHandle != IntPtr.Zero
+                && !User32.IsWindow(slot.WindowHandle))
+            {
+                slot.Status = ZoneSlotStatus.Empty;
+                slot.AppPath = null;
+                slot.DisplayName = null;
+                slot.Process = null;
+                slot.WindowHandle = IntPtr.Zero;
+                slot.OriginalWindowBounds = null;
+                slot.IconBytes = null;
+                slot.Chip.Render(ZoneSlotStatus.Empty, null);
+                slot.Border.SetOccupied(false);
+            }
+        }
+    }
+
+    /// Область, которую сейчас занимают зоны: обычная рабочая область (без панели задач),
+    /// либо весь монитор целиком, если панель задач сейчас скрыта через ScreenSplitter.
 
     private PixelRect? GetActiveArea()
     {
-        var screen = _screenSource?.Screens.Primary;
+        var screen = GetTargetScreen();
         if (screen is null) return null;
 
         return TaskbarController.IsHidden ? screen.Bounds : screen.WorkingArea;
@@ -165,6 +248,9 @@ public class ZoneManager
             (int)((x1 - x0) * area.Width),
             (int)((y1 - y0) * area.Height));
     }
+
+    /// Пересчитывает границы уже существующих зон под текущую доступную область (например, после
+    /// скрытия/показа панели задач) — без потери назначенных приложений, просто переставляет их.
 
     public void RecomputeLayout() => RepositionAll();
 
@@ -260,6 +346,10 @@ public class ZoneManager
         var y = area.Y + (int)(_rowBounds[boundaryIndex] * area.Height) - SplitterThickness / 2;
         splitter.PlaceAt(new PixelRect(area.X, y, area.Width, SplitterThickness));
     }
+
+    /// Двигает границу между колонкой boundaryIndex-1 и boundaryIndex. Расширение одной зоны
+    /// автоматически сжимает соседнюю зону (или все зоны в этой колонке/строке, если их несколько) —
+    /// ровно настолько, насколько выросла первая
 
     private void SetColumnBoundary(int boundaryIndex, double newFraction)
     {
@@ -363,10 +453,11 @@ public class ZoneManager
         slot.OriginalWindowBounds = User32.GetWindowRect(hwnd, out var rect)
             ? new PixelRect(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top)
             : null;
+        slot.IconBytes = AppIconExtractor.ExtractIconPng(AppIconExtractor.ResolveExePathFromWindow(hwnd));
 
         WindowStyleHelper.PlaceWindowFlush(hwnd, slot.Bounds.X, slot.Bounds.Y, slot.Bounds.Width, slot.Bounds.Height);
 
-        slot.Chip.Render(ZoneSlotStatus.Assigned, slot.DisplayName);
+        slot.Chip.Render(ZoneSlotStatus.Assigned, slot.DisplayName, slot.IconBytes);
         slot.Border.SetOccupied(true);
     }
 
@@ -451,12 +542,14 @@ public class ZoneManager
             slot.OriginalWindowBounds = User32.GetWindowRect(handle, out var rect)
                 ? new PixelRect(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top)
                 : null;
+            slot.IconBytes = AppIconExtractor.ExtractIconPng(
+                File.Exists(appPath) ? appPath : AppIconExtractor.ResolveExePathFromWindow(handle));
 
             WindowStyleHelper.PlaceWindowFlush(handle, slot.Bounds.X, slot.Bounds.Y, slot.Bounds.Width, slot.Bounds.Height);
             WindowStyleHelper.ActivateWindow(handle);
         }
 
-        slot.Chip.Render(ZoneSlotStatus.Assigned, title);
+        slot.Chip.Render(ZoneSlotStatus.Assigned, title, slot.IconBytes);
         slot.Border.SetOccupied(true);
     }
 
@@ -473,6 +566,7 @@ public class ZoneManager
         slot.Process = null;
         slot.WindowHandle = IntPtr.Zero;
         slot.OriginalWindowBounds = null;
+        slot.IconBytes = null;
         slot.Chip.Render(ZoneSlotStatus.Empty, null);
         slot.Border.SetOccupied(false);
     }
@@ -509,6 +603,7 @@ public class ZoneManager
         (a.Process, b.Process) = (b.Process, a.Process);
         (a.WindowHandle, b.WindowHandle) = (b.WindowHandle, a.WindowHandle);
         (a.OriginalWindowBounds, b.OriginalWindowBounds) = (b.OriginalWindowBounds, a.OriginalWindowBounds);
+        (a.IconBytes, b.IconBytes) = (b.IconBytes, a.IconBytes);
 
         if (a.WindowHandle != IntPtr.Zero)
             WindowStyleHelper.PlaceWindowFlush(a.WindowHandle, a.Bounds.X, a.Bounds.Y, a.Bounds.Width, a.Bounds.Height);
@@ -518,12 +613,14 @@ public class ZoneManager
         var aTitle = a.AppPath is null ? a.DisplayName : (a.DisplayName ?? System.IO.Path.GetFileNameWithoutExtension(a.AppPath));
         var bTitle = b.AppPath is null ? b.DisplayName : (b.DisplayName ?? System.IO.Path.GetFileNameWithoutExtension(b.AppPath));
 
-        a.Chip.Render(a.Status, aTitle);
-        b.Chip.Render(b.Status, bTitle);
+        a.Chip.Render(a.Status, aTitle, a.IconBytes);
+        b.Chip.Render(b.Status, bTitle, b.IconBytes);
         a.Border.SetOccupied(a.Status == ZoneSlotStatus.Assigned);
         b.Border.SetOccupied(b.Status == ZoneSlotStatus.Assigned);
     }
 
+    /// Закрывает все окна-оверлеи зон. Используется как при обычном сбросе разбивки,
+    /// так и при аварийном завершении/краше приложения — чтобы не оставлять "зависшие" рамки на экране
     public void CloseAllZones() => ClearAll();
 
     private void ClearAll()
@@ -548,6 +645,9 @@ public class ZoneManager
 
         _dragHoverTimer?.Stop();
         _dragHoverTimer = null;
+
+        _livenessTimer?.Stop();
+        _livenessTimer = null;
 
         _moveWatcher?.Dispose();
         _moveWatcher = null;

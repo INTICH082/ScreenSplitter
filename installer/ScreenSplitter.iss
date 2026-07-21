@@ -1,5 +1,5 @@
 #define MyAppName "ScreenSplitter"
-#define MyAppVersion "1.2.1"
+#define MyAppVersion "1.3.0"
 #define MyAppPublisher "ScreenSplitter"
 #define MyAppExeName "ScreenSplitter.exe"
 #define MyPublishDir "..\publish"
