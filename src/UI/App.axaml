@@ -1,5 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:styling="using:FluentAvalonia.Styling"
              x:Class="ScreenSplitter.UI.App"
              RequestedThemeVariant="Dark">
 
@@ -17,7 +18,7 @@
   </Application.Resources>
 
   <Application.Styles>
-    <FluentTheme />
+    <styling:FluentAvaloniaTheme />
 
     <Style Selector="Button.action">
       <Setter Property="Background" Value="{StaticResource BgPanelAlt}" />
@@ -73,6 +74,7 @@
               </NativeMenuItem.Menu>
             </NativeMenuItem>
             <NativeMenuItem Header="Сценарии..." Click="OnScenariosMenuClicked" />
+            <NativeMenuItem Header="Маленькое окно поверх (PiP)" Click="OnTogglePipMenuClicked" />
             <NativeMenuItem Header="Настройки..." Click="OnSettingsMenuClicked" />
             <NativeMenuItemSeparator />
             <NativeMenuItem Header="Выход" Click="OnExit" />

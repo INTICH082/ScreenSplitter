@@ -10,7 +10,10 @@ public static class WindowStyleHelper
         if (hwnd == IntPtr.Zero) return;
 
         int exStyle = User32.GetWindowLong(hwnd, User32.GWL_EXSTYLE);
-        User32.SetWindowLong(hwnd, User32.GWL_EXSTYLE, exStyle | User32.WS_EX_NOACTIVATE | User32.WS_EX_TOOLWINDOW);
+        User32.SetWindowLong(
+            hwnd,
+            User32.GWL_EXSTYLE,
+            exStyle | User32.WS_EX_NOACTIVATE | User32.WS_EX_TOOLWINDOW);
     }
 
     public static void MoveWindow(IntPtr hwnd, int x, int y, int width, int height)
@@ -24,6 +27,24 @@ public static class WindowStyleHelper
     {
         if (hwnd == IntPtr.Zero) return;
 
+        var (x, y, w, h) = ComputeFlushRect(hwnd, targetX, targetY, targetWidth, targetHeight);
+        MoveWindow(hwnd, x, y, w, h);
+    }
+
+    public static void PlaceWindowFlushTopmost(IntPtr hwnd, int targetX, int targetY, int targetWidth, int targetHeight)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        var (x, y, w, h) = ComputeFlushRect(hwnd, targetX, targetY, targetWidth, targetHeight);
+
+        const uint SWP_NOACTIVATE = 0x0010;
+        var hwndTopmost = new IntPtr(-1);
+        User32.SetWindowPos(hwnd, hwndTopmost, x, y, w, h, SWP_NOACTIVATE);
+    }
+
+    private static (int X, int Y, int Width, int Height) ComputeFlushRect(
+        IntPtr hwnd, int targetX, int targetY, int targetWidth, int targetHeight)
+    {
         int left = 0, top = 0, right = 0, bottom = 0;
 
         if (User32.GetWindowRect(hwnd, out var actual) &&
@@ -35,12 +56,7 @@ public static class WindowStyleHelper
             bottom = actual.Bottom - visible.Bottom;
         }
 
-        MoveWindow(
-            hwnd,
-            targetX - left,
-            targetY - top,
-            targetWidth + left + right,
-            targetHeight + top + bottom);
+        return (targetX - left, targetY - top, targetWidth + left + right, targetHeight + top + bottom);
     }
 
     public static void MakeClickThrough(IntPtr hwnd)
@@ -48,8 +64,11 @@ public static class WindowStyleHelper
         if (hwnd == IntPtr.Zero) return;
 
         int exStyle = User32.GetWindowLong(hwnd, User32.GWL_EXSTYLE);
-        User32.SetWindowLong(hwnd, User32.GWL_EXSTYLE,
-        exStyle | User32.WS_EX_TRANSPARENT | User32.WS_EX_LAYERED | User32.WS_EX_NOACTIVATE | User32.WS_EX_TOOLWINDOW);
+        User32.SetWindowLong(
+            hwnd,
+            User32.GWL_EXSTYLE,
+            exStyle | User32.WS_EX_TRANSPARENT | User32.WS_EX_LAYERED
+                    | User32.WS_EX_NOACTIVATE | User32.WS_EX_TOOLWINDOW);
     }
 
     public static void ActivateWindow(IntPtr hwnd)

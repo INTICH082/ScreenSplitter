@@ -60,10 +60,22 @@ public partial class ZonePatternPickerWindow : Window
         Close();
     }
 
+    private void OnThreeColumnsClicked(object? sender, RoutedEventArgs e)
+    {
+        _zoneManager.ApplyPattern(ZonePatternType.ThreeColumns);
+        Close();
+    }
+
+    private void OnAsymmetricClicked(object? sender, RoutedEventArgs e)
+    {
+        _zoneManager.ApplyPattern(ZonePatternType.AsymmetricGrid);
+        Close();
+    }
+
     private void OnCustomGridClicked(object? sender, RoutedEventArgs e)
     {
-        var cols = (int)(ColsUpDown.Value ?? 2);
-        var rows = (int)(RowsUpDown.Value ?? 2);
+        var cols = double.IsNaN(ColsUpDown.Value) ? 2 : (int)ColsUpDown.Value;
+        var rows = double.IsNaN(RowsUpDown.Value) ? 2 : (int)RowsUpDown.Value;
         _zoneManager.ApplyCustomGrid(cols, rows);
         Close();
     }

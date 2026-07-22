@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ScreenSplitter.UI.Views.OverlayMenuWindow"
-        Width="230" Height="140"
+        Width="272" Height="140"
         SystemDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
@@ -28,15 +28,17 @@
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="BorderBrush" Value="{StaticResource LineHairline}" />
-      <Setter Property="FontSize" Value="15" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Cursor" Value="Hand" />
     </Style>
     <Style Selector="Button.icon-btn:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="{StaticResource AccentSignal}" />
-      <Setter Property="TextBlock.Foreground" Value="#0B0E14" />
       <Setter Property="BorderBrush" Value="{StaticResource AccentSignal}" />
+    </Style>
+    <Style Selector="Button.icon-btn.active">
+      <Setter Property="BorderBrush" Value="{StaticResource AccentSignal}" />
+      <Setter Property="BorderThickness" Value="1.5" />
     </Style>
   </Window.Styles>
 
@@ -51,37 +53,85 @@
       <StackPanel Orientation="Vertical" Spacing="8">
 
         <Grid ColumnDefinitions="*,Auto">
+          <!-- Хват для перетаскивания панели: вручную отслеживаем drag, чтобы клик не путался с перетаскиванием -->
           <Border Grid.Column="0"
                   Background="Transparent"
                   PointerPressed="OnDragHandlePressed"
+                  PointerMoved="OnDragPointerMoved"
+                  PointerReleased="OnDragPointerReleased"
                   Padding="2">
-            <Canvas Width="16" Height="16" HorizontalAlignment="Left">
-              <Line StartPoint="8,0" EndPoint="8,4" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.4" />
-              <Line StartPoint="8,12" EndPoint="8,16" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.4" />
-              <Line StartPoint="0,8" EndPoint="4,8" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.4" />
-              <Line StartPoint="12,8" EndPoint="16,8" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.4" />
-              <Ellipse Canvas.Left="5.5" Canvas.Top="5.5" Width="5" Height="5" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.2" />
-            </Canvas>
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <Canvas Width="14" Height="14">
+                <Line StartPoint="7,0" EndPoint="7,4" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.4" />
+                <Line StartPoint="7,10" EndPoint="7,14" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.4" />
+                <Line StartPoint="0,7" EndPoint="4,7" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.4" />
+                <Line StartPoint="10,7" EndPoint="14,7" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.4" />
+                <Ellipse Canvas.Left="5" Canvas.Top="5" Width="4" Height="4" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.1" />
+              </Canvas>
+              <TextBlock Text="SCREENSPLITTER" Foreground="{StaticResource TextMuted}"
+                         FontFamily="Consolas" FontSize="8.5" LetterSpacing="1" VerticalAlignment="Center" />
+            </StackPanel>
           </Border>
 
           <Button Grid.Column="1"
-                  Content="—"
                   Classes="icon-btn"
                   Width="24" Height="24"
-                  FontSize="11"
                   Click="OnCollapseClicked"
-                  ToolTip.Tip="Свернуть панель" />
+                  ToolTip.Tip="Свернуть панель">
+            <Canvas Width="10" Height="2">
+              <Line StartPoint="0,1" EndPoint="10,1" Stroke="{StaticResource TextPrimary}" StrokeThickness="1.6" />
+            </Canvas>
+          </Button>
         </Grid>
 
+        <Rectangle Height="1" Fill="{StaticResource LineHairline}" HorizontalAlignment="Stretch" />
+
         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-          <Button Content="▦" Classes="icon-btn" Click="OnZonesClicked"
-                  ToolTip.Tip="Разбить экран на зоны" />
-          <Button Content="☰" Classes="icon-btn" Click="OnScenariosClicked"
-                  ToolTip.Tip="Сценарии" />
-          <Button x:Name="TaskbarButton" Content="⬓" Classes="icon-btn" Click="OnTaskbarToggleClicked"
-                  ToolTip.Tip="Скрыть/показать панель задач" />
-          <Button Content="⚙" Classes="icon-btn" Click="OnSettingsClicked"
-                  ToolTip.Tip="Настройки" />
+          <!-- Zones: сетка 2x2 -->
+          <Button Classes="action icon-btn" Click="OnZonesClicked" ToolTip.Tip="Разбить экран на зоны">
+            <Canvas Width="16" Height="16">
+              <Rectangle Canvas.Left="1" Canvas.Top="1" Width="6" Height="6" Fill="{StaticResource TextPrimary}" RadiusX="1" RadiusY="1" />
+              <Rectangle Canvas.Left="9" Canvas.Top="1" Width="6" Height="6" Fill="{StaticResource TextPrimary}" RadiusX="1" RadiusY="1" />
+              <Rectangle Canvas.Left="1" Canvas.Top="9" Width="6" Height="6" Fill="{StaticResource TextPrimary}" RadiusX="1" RadiusY="1" />
+              <Rectangle Canvas.Left="9" Canvas.Top="9" Width="6" Height="6" Fill="{StaticResource TextPrimary}" RadiusX="1" RadiusY="1" />
+            </Canvas>
+          </Button>
+
+          <!-- Сценарии: три строки (список) -->
+          <Button Classes="action icon-btn" Click="OnScenariosClicked" ToolTip.Tip="Сценарии">
+            <Canvas Width="16" Height="16">
+              <Line StartPoint="2,4" EndPoint="14,4" Stroke="{StaticResource TextPrimary}" StrokeThickness="1.6" />
+              <Line StartPoint="2,8" EndPoint="14,8" Stroke="{StaticResource TextPrimary}" StrokeThickness="1.6" />
+              <Line StartPoint="2,12" EndPoint="14,12" Stroke="{StaticResource TextPrimary}" StrokeThickness="1.6" />
+            </Canvas>
+          </Button>
+
+          <!-- PiP: большой + маленький прямоугольник внахлёст -->
+          <Button x:Name="PipButton" Classes="action icon-btn" Click="OnPipToggleClicked" ToolTip.Tip="Маленькое окно поверх (PiP)">
+            <Canvas Width="16" Height="16">
+              <Rectangle Canvas.Left="1" Canvas.Top="2" Width="14" Height="10" Stroke="{StaticResource TextPrimary}" StrokeThickness="1.3" RadiusX="1.5" RadiusY="1.5" />
+              <Rectangle Canvas.Left="8" Canvas.Top="7" Width="7" Height="6" Fill="{StaticResource TextPrimary}" RadiusX="1" RadiusY="1" />
+            </Canvas>
+          </Button>
+
+          <!-- Панель задач: прямоугольник с закрашенной нижней полосой -->
+          <Button x:Name="TaskbarButton" Classes="action icon-btn" Click="OnTaskbarToggleClicked" ToolTip.Tip="Скрыть/показать панель задач">
+            <Canvas Width="16" Height="16">
+              <Rectangle Canvas.Left="1" Canvas.Top="1" Width="14" Height="14" Stroke="{StaticResource TextPrimary}" StrokeThickness="1.3" RadiusX="1.5" RadiusY="1.5" />
+              <Rectangle Canvas.Left="1" Canvas.Top="11" Width="14" Height="4" Fill="{StaticResource TextPrimary}" RadiusX="1" RadiusY="1" />
+            </Canvas>
+          </Button>
+
+          <!-- Настройки: круг + 4 засечки (упрощённая шестерёнка) -->
+          <Button Classes="action icon-btn" Click="OnSettingsClicked" ToolTip.Tip="Настройки">
+            <Canvas Width="16" Height="16">
+              <Ellipse Canvas.Left="4" Canvas.Top="4" Width="8" Height="8" Stroke="{StaticResource TextPrimary}" StrokeThickness="1.5" />
+              <Line StartPoint="8,0" EndPoint="8,3" Stroke="{StaticResource TextPrimary}" StrokeThickness="1.5" />
+              <Line StartPoint="8,13" EndPoint="8,16" Stroke="{StaticResource TextPrimary}" StrokeThickness="1.5" />
+              <Line StartPoint="0,8" EndPoint="3,8" Stroke="{StaticResource TextPrimary}" StrokeThickness="1.5" />
+              <Line StartPoint="13,8" EndPoint="16,8" Stroke="{StaticResource TextPrimary}" StrokeThickness="1.5" />
+            </Canvas>
+          </Button>
         </StackPanel>
 
         <Rectangle Height="1" Fill="{StaticResource LineHairline}" HorizontalAlignment="Stretch" />
@@ -101,7 +151,7 @@
                 Cursor="Hand"
                 PointerPressed="OnUpdateNoticeClicked">
           <TextBlock x:Name="UpdateNoticeLabel"
-                     Text="🔔 Доступно обновление"
+                     Text="Доступно обновление"
                      Foreground="{StaticResource AccentSignal}"
                      FontFamily="Consolas" FontSize="9.5"
                      HorizontalAlignment="Center" />
@@ -117,10 +167,18 @@
             BorderBrush="{StaticResource AccentSignal}"
             BorderThickness="1.5"
             IsVisible="False"
-            PointerPressed="OnCollapsedPointerPressed"
             Cursor="Hand"
+            PointerPressed="OnCollapsedPointerPressed"
+            PointerMoved="OnDragPointerMoved"
+            PointerReleased="OnDragPointerReleased"
             ToolTip.Tip="Перетащить / открыть панель ScreenSplitter">
-      <TextBlock Text="⠿" Foreground="{StaticResource AccentSignal}" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
+      <Canvas Width="14" Height="14">
+        <Line StartPoint="7,0" EndPoint="7,4" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.4" />
+        <Line StartPoint="7,10" EndPoint="7,14" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.4" />
+        <Line StartPoint="0,7" EndPoint="4,7" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.4" />
+        <Line StartPoint="10,7" EndPoint="14,7" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.4" />
+        <Ellipse Canvas.Left="5" Canvas.Top="5" Width="4" Height="4" Stroke="{StaticResource AccentSignal}" StrokeThickness="1.1" />
+      </Canvas>
     </Border>
   </Grid>
 </Window>

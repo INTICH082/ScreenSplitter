@@ -93,7 +93,7 @@ public partial class App : Application
         }
         catch
         {
-            // Комбинация уже занята другой программой — не критично, приложение продолжает работать без неё
+            // Комбинация уже занята другой программой — не критично, приложение продолжает работать без неё.
         }
     }
 
@@ -107,7 +107,6 @@ public partial class App : Application
     }
 
     /// Перечитывает сохранённые сценарии и перерегистрирует их горячие клавиши (Ctrl+Alt+1..9).
-    /// Вызывается при старте и после любых изменений в окне управления сценариями
 
     public void RebuildProfileHotkeys()
     {
@@ -172,6 +171,11 @@ public partial class App : Application
     private void OnScenariosMenuClicked(object? sender, System.EventArgs e)
     {
         new ProfileManagerWindow(_zoneManager, RebuildProfileHotkeys).Show();
+    }
+
+    private void OnTogglePipMenuClicked(object? sender, System.EventArgs e)
+    {
+        _zoneManager.TogglePictureInPicture();
     }
 
     private void OnSettingsMenuClicked(object? sender, System.EventArgs e)

@@ -21,6 +21,14 @@ public static class LayoutPresets
             new RelativeZoneRect(0, 0.5, 1, 0.5)
         },
         ZonePatternType.Grid2x2 => BuildGrid(2, 2),
+        ZonePatternType.ThreeColumns => BuildGrid(3, 1),
+        ZonePatternType.AsymmetricGrid => new[]
+        {
+            new RelativeZoneRect(0, 0, 0.65, 0.65),
+            new RelativeZoneRect(0.65, 0, 0.35, 0.65),
+            new RelativeZoneRect(0, 0.65, 0.65, 0.35),
+            new RelativeZoneRect(0.65, 0.65, 0.35, 0.35)
+        },
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Для Custom используйте BuildGrid(cols, rows).")
     };
 

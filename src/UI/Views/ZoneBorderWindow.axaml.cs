@@ -15,6 +15,7 @@ public partial class ZoneBorderWindow : Window
     private double _lastWidth;
     private double _lastHeight;
     private bool _isOccupied;
+    private bool _isPip;
 
     public ZoneBorderWindow()
     {
@@ -36,6 +37,17 @@ public partial class ZoneBorderWindow : Window
         IndexLabel.Text = number.ToString("00");
     }
 
+    public void SetLabel(string text)
+    {
+        IndexLabel.Text = text;
+    }
+
+    public void SetPictureInPicture(bool isPip)
+    {
+        _isPip = isPip;
+        DrawReticle(_lastWidth, _lastHeight);
+    }
+
     public void SetOccupied(bool occupied)
     {
         _isOccupied = occupied;
@@ -45,7 +57,7 @@ public partial class ZoneBorderWindow : Window
 
     public void SetHighlighted(bool highlighted)
     {
-        var brush = new SolidColorBrush(highlighted ? Color.Parse("#4FD1C5") : Color.Parse("#2A3140"));
+        var brush = highlighted ? SignalBrush : BaseBrush;
         foreach (var line in new[] { TL1, TL2, TR1, TR2, BL1, BL2, BR1, BR2 })
         {
             line.Stroke = brush;
@@ -54,12 +66,18 @@ public partial class ZoneBorderWindow : Window
 
     public void SetDropTargetActive(bool active)
     {
-        var brush = new SolidColorBrush(active ? Color.Parse("#4FD1C5") : Color.Parse("#2A3140"));
+        var brush = active ? SignalBrush : BaseBrush;
         foreach (var line in new[] { TL1, TL2, TR1, TR2, BL1, BL2, BR1, BR2 })
         {
             line.Stroke = brush;
         }
     }
+
+    private static readonly SolidColorBrush SignalBrush = new(Color.Parse("#4FD1C5"));
+    private static readonly SolidColorBrush HairlineBrush = new(Color.Parse("#2A3140"));
+    private static readonly SolidColorBrush PipBrush = new(Color.Parse("#F2A65A"));
+
+    private SolidColorBrush BaseBrush => _isPip ? PipBrush : HairlineBrush;
 
     public void SetDropHighlighted(bool highlighted)
     {
@@ -92,6 +110,11 @@ public partial class ZoneBorderWindow : Window
         // низ-право
         SetLine(BR1, w, h, w - len, h);
         SetLine(BR2, w, h, w, h - len);
+
+        foreach (var line in new[] { TL1, TL2, TR1, TR2, BL1, BL2, BR1, BR2 })
+        {
+            line.Stroke = BaseBrush;
+        }
     }
 
     private static void SetLine(Line line, double x1, double y1, double x2, double y2)
