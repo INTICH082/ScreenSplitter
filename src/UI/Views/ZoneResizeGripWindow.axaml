@@ -9,7 +9,7 @@
         ShowInTaskbar="False"
         CanResize="False"
         ShowActivated="False"
-        Cursor="SizeNorthWestSouthEast"
+        Cursor="SizeAll"
         WindowStartupLocation="Manual">
 
   <Border x:Name="GripBorder"

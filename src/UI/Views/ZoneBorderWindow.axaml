@@ -21,39 +21,37 @@
             CornerRadius="6"
             IsVisible="False" />
 
-    <Grid Margin="10">
-      <Canvas x:Name="ReticleCanvas">
-        <Canvas.Transitions>
-          <Transitions>
-            <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CubicEaseOut" />
-          </Transitions>
-        </Canvas.Transitions>
-        <!-- верх-лево -->
-        <Line x:Name="TL1" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
-        <Line x:Name="TL2" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
-        <!-- верх-право -->
-        <Line x:Name="TR1" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
-        <Line x:Name="TR2" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
-        <!-- низ-лево -->
-        <Line x:Name="BL1" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
-        <Line x:Name="BL2" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
-        <!-- низ-право -->
-        <Line x:Name="BR1" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
-        <Line x:Name="BR2" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
-      </Canvas>
+    <Canvas x:Name="ReticleCanvas">
+      <Canvas.Transitions>
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CubicEaseOut" />
+        </Transitions>
+      </Canvas.Transitions>
+      <!-- верх-лево -->
+      <Line x:Name="TL1" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
+      <Line x:Name="TL2" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
+      <!-- верх-право -->
+      <Line x:Name="TR1" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
+      <Line x:Name="TR2" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
+      <!-- низ-лево -->
+      <Line x:Name="BL1" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
+      <Line x:Name="BL2" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
+      <!-- низ-право -->
+      <Line x:Name="BR1" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
+      <Line x:Name="BR2" Stroke="{StaticResource LineHairline}" StrokeThickness="2" />
+    </Canvas>
 
-      <Border Background="#801B212B"
-              CornerRadius="4"
-              Padding="5,2"
-              HorizontalAlignment="Left"
-              VerticalAlignment="Bottom"
-              Margin="6">
-        <TextBlock x:Name="IndexLabel"
-                   Text="01"
-                   FontFamily="Consolas"
-                   FontSize="10"
-                   Foreground="{StaticResource TextMuted}" />
-      </Border>
-    </Grid>
+    <Border Background="#801B212B"
+            CornerRadius="4"
+            Padding="5,2"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Bottom"
+            Margin="6">
+      <TextBlock x:Name="IndexLabel"
+                 Text="01"
+                 FontFamily="Consolas"
+                 FontSize="10"
+                 Foreground="{StaticResource TextMuted}" />
+    </Border>
   </Grid>
 </Window>

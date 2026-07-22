@@ -10,7 +10,7 @@ public partial class ZoneBorderWindow : Window
 {
     private const double BracketLength = 22;
     private const double CompactBracketLength = 9;
-    private const double Inset = 10;
+    private const double MaxInset = 10;
 
     private double _lastWidth;
     private double _lastHeight;
@@ -90,10 +90,13 @@ public partial class ZoneBorderWindow : Window
         _lastWidth = width;
         _lastHeight = height;
 
-        var w = Math.Max(0, width - Inset * 2);
-        var h = Math.Max(0, height - Inset * 2);
+        var inset = Math.Clamp(Math.Min(width, height) * 0.045, 3, MaxInset);
+
+        var w = Math.Max(0, width - inset * 2);
+        var h = Math.Max(0, height - inset * 2);
         ReticleCanvas.Width = w;
         ReticleCanvas.Height = h;
+        ReticleCanvas.Margin = new Thickness(inset);
 
         var maxLen = _isOccupied ? CompactBracketLength : BracketLength;
         var len = Math.Min(maxLen, Math.Min(w, h) / 3);
