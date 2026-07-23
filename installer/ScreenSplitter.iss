@@ -1,11 +1,11 @@
 #define MyAppName "ScreenSplitter"
-#define MyAppVersion "1.4.1"
+#define MyAppVersion "1.4.2"
 #define MyAppPublisher "ScreenSplitter"
 #define MyAppExeName "ScreenSplitter.exe"
 #define MyPublishDir "..\publish"
 
 [Setup]
-AppId={{B3E1B6B6-8B7F-4C2E-9B9E-2C7B0B5D8A11}
+AppId={B3E1B6B6-8B7F-4C2E-9B9E-2C7B0B5D8A11}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}

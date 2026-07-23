@@ -20,30 +20,32 @@ public partial class ZoneSplitterWindow : Window
 
     public event Action? DragEnded;
 
-    public ZoneSplitterWindow() : this(SplitterOrientation.Vertical){}
-
     public ZoneSplitterWindow(SplitterOrientation orientation)
     {
         _orientation = orientation;
         InitializeComponent();
 
-        Cursor = new Cursor(orientation == SplitterOrientation.Vertical ? StandardCursorType.SizeWestEast : StandardCursorType.SizeNorthSouth);
+        Cursor = new Cursor(orientation == SplitterOrientation.Vertical
+            ? StandardCursorType.SizeWestEast
+            : StandardCursorType.SizeNorthSouth);
 
         Opened += (_, _) => ApplyNonActivating();
     }
 
-    public void PlaceAt(PixelRect bounds)
+    public void PlaceAt(PixelRect bounds, double scaling)
     {
         Position = new PixelPoint(bounds.X, bounds.Y);
-        var scaling = DesktopScaling > 0 ? DesktopScaling : 1.0;
-        Width = bounds.Width / scaling;
-        Height = bounds.Height / scaling;
+        var safeScaling = scaling > 0 ? scaling : 1.0;
+        Width = bounds.Width / safeScaling;
+        Height = bounds.Height / safeScaling;
     }
 
     private PixelPoint GetScreenPoint(PointerEventArgs e)
     {
         var p = e.GetPosition(this);
-        return new PixelPoint(Position.X + (int)(p.X * RenderScaling), Position.Y + (int)(p.Y * RenderScaling));
+        return new PixelPoint(
+            Position.X + (int)(p.X * RenderScaling),
+            Position.Y + (int)(p.Y * RenderScaling));
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)

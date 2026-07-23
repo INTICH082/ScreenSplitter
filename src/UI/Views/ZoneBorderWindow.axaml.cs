@@ -23,12 +23,12 @@ public partial class ZoneBorderWindow : Window
         Opened += (_, _) => ApplyClickThrough();
     }
 
-    public void PlaceAt(PixelRect bounds)
+    public void PlaceAt(PixelRect bounds, double scaling)
     {
         Position = new PixelPoint(bounds.X, bounds.Y);
-        var scaling = DesktopScaling > 0 ? DesktopScaling : 1.0;
-        Width = bounds.Width / scaling;
-        Height = bounds.Height / scaling;
+        var safeScaling = scaling > 0 ? scaling : 1.0;
+        Width = bounds.Width / safeScaling;
+        Height = bounds.Height / safeScaling;
         DrawReticle(Width, Height);
     }
 

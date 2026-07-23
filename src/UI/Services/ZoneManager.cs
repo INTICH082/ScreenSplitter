@@ -15,8 +15,8 @@ public class ZoneManager
 {
     private const double MinFraction = 0.08; // минимальный размер зоны — 8% ширины/высоты области
     private const int SplitterThickness = 5;
-    private const int PipMinWidth = 200;
-    private const int PipMinHeight = 140;
+    private const int PipMinWidth = 420;
+    private const int PipMinHeight = 300;
 
     private class Slot
     {
@@ -36,12 +36,15 @@ public class ZoneManager
         public bool IsDropHighlighted { get; set; }
     }
 
+    private enum PipCorner { TopLeft, TopRight, BottomLeft, BottomRight }
+
     private class FloatingZone
     {
         public PixelRect Bounds;
         public required ZoneBorderWindow Border { get; init; }
         public required ZoneChipWindow Chip { get; init; }
-        public required ZoneResizeGripWindow Grip { get; init; }
+        public required ZonePipMoveHandleWindow MoveHandle { get; init; }
+        public required Dictionary<PipCorner, ZoneResizeGripWindow> Grips { get; init; }
 
         public ZoneSlotStatus Status = ZoneSlotStatus.Empty;
         public string? AppPath;
@@ -108,6 +111,8 @@ public class ZoneManager
 
         return screens.All[_targetScreenIndex];
     }
+
+    private double GetScreenScaling() => GetTargetScreen()?.Scaling ?? 1.0;
 
     public void ApplyPattern(ZonePatternType type)
     {
@@ -188,13 +193,14 @@ public class ZoneManager
         _colBounds = xs.Append(1.0).ToArray();
         _rowBounds = ys.Append(1.0).ToArray();
 
+        var scaling = GetScreenScaling();
         var index = 1;
         foreach (var rel in pattern)
         {
             var col = xs.IndexOf(Math.Round(rel.X, 6));
             var row = ys.IndexOf(Math.Round(rel.Y, 6));
             var bounds = ZoneBounds(col, row, workingArea);
-            CreateSlot(col, row, bounds, index++);
+            CreateSlot(col, row, bounds, index++, scaling);
         }
 
         CreateSplitters(workingArea);
@@ -285,12 +291,14 @@ public class ZoneManager
         var area = GetActiveArea();
         if (area is not { } workingArea) return;
 
+        var scaling = GetScreenScaling();
+
         foreach (var slot in _slots)
         {
             var bounds = ZoneBounds(slot.Col, slot.Row, workingArea);
             slot.Bounds = bounds;
 
-            slot.Border.PlaceAt(bounds);
+            slot.Border.PlaceAt(bounds, scaling);
             slot.Chip.PlaceAt(new PixelPoint(bounds.X + 12, bounds.Y + 12));
 
             if (slot.WindowHandle != IntPtr.Zero)
@@ -301,11 +309,11 @@ public class ZoneManager
 
         for (int i = 0; i < _colSplitters.Count; i++)
         {
-            PositionColumnSplitter(_colSplitters[i], i + 1, workingArea);
+            PositionColumnSplitter(_colSplitters[i], i + 1, workingArea, scaling);
         }
         for (int j = 0; j < _rowSplitters.Count; j++)
         {
-            PositionRowSplitter(_rowSplitters[j], j + 1, workingArea);
+            PositionRowSplitter(_rowSplitters[j], j + 1, workingArea, scaling);
         }
 
         if (_pip is { } pip)
@@ -313,9 +321,9 @@ public class ZoneManager
             var clampedX = Math.Clamp(pip.Bounds.X, workingArea.X, workingArea.X + workingArea.Width - pip.Bounds.Width);
             var clampedY = Math.Clamp(pip.Bounds.Y, workingArea.Y, workingArea.Y + workingArea.Height - pip.Bounds.Height);
             pip.Bounds = new PixelRect(clampedX, clampedY, pip.Bounds.Width, pip.Bounds.Height);
-            pip.Border.PlaceAt(pip.Bounds);
+            pip.Border.PlaceAt(pip.Bounds, scaling);
             pip.Chip.PlaceAt(new PixelPoint(pip.Bounds.X + 12, pip.Bounds.Y + 12));
-            PositionPipGrip(pip);
+            PositionPipGrips(pip);
 
             if (pip.WindowHandle != IntPtr.Zero)
             {
@@ -326,21 +334,22 @@ public class ZoneManager
 
     private void CreateSplitters(PixelRect area)
     {
+        var scaling = GetScreenScaling();
         for (int i = 1; i < _cols; i++)
         {
-            CreateColumnSplitter(i, area);
+            CreateColumnSplitter(i, area, scaling);
         }
         for (int j = 1; j < _rows; j++)
         {
-            CreateRowSplitter(j, area);
+            CreateRowSplitter(j, area, scaling);
         }
     }
 
-    private void CreateColumnSplitter(int boundaryIndex, PixelRect area)
+    private void CreateColumnSplitter(int boundaryIndex, PixelRect area, double scaling)
     {
         var splitter = new ZoneSplitterWindow(ZoneSplitterWindow.SplitterOrientation.Vertical);
         splitter.Show();
-        PositionColumnSplitter(splitter, boundaryIndex, area);
+        PositionColumnSplitter(splitter, boundaryIndex, area, scaling);
 
         double startFraction = 0;
         splitter.DragStarted += () => startFraction = _colBounds[boundaryIndex];
@@ -354,11 +363,11 @@ public class ZoneManager
         _colSplitters.Add(splitter);
     }
 
-    private void CreateRowSplitter(int boundaryIndex, PixelRect area)
+    private void CreateRowSplitter(int boundaryIndex, PixelRect area, double scaling)
     {
         var splitter = new ZoneSplitterWindow(ZoneSplitterWindow.SplitterOrientation.Horizontal);
         splitter.Show();
-        PositionRowSplitter(splitter, boundaryIndex, area);
+        PositionRowSplitter(splitter, boundaryIndex, area, scaling);
 
         double startFraction = 0;
         splitter.DragStarted += () => startFraction = _rowBounds[boundaryIndex];
@@ -372,16 +381,16 @@ public class ZoneManager
         _rowSplitters.Add(splitter);
     }
 
-    private void PositionColumnSplitter(ZoneSplitterWindow splitter, int boundaryIndex, PixelRect area)
+    private void PositionColumnSplitter(ZoneSplitterWindow splitter, int boundaryIndex, PixelRect area, double scaling)
     {
         var x = area.X + (int)(_colBounds[boundaryIndex] * area.Width) - SplitterThickness / 2;
-        splitter.PlaceAt(new PixelRect(x, area.Y, SplitterThickness, area.Height));
+        splitter.PlaceAt(new PixelRect(x, area.Y, SplitterThickness, area.Height), scaling);
     }
 
-    private void PositionRowSplitter(ZoneSplitterWindow splitter, int boundaryIndex, PixelRect area)
+    private void PositionRowSplitter(ZoneSplitterWindow splitter, int boundaryIndex, PixelRect area, double scaling)
     {
         var y = area.Y + (int)(_rowBounds[boundaryIndex] * area.Height) - SplitterThickness / 2;
-        splitter.PlaceAt(new PixelRect(area.X, y, area.Width, SplitterThickness));
+        splitter.PlaceAt(new PixelRect(area.X, y, area.Width, SplitterThickness), scaling);
     }
 
     private void SetColumnBoundary(int boundaryIndex, double newFraction)
@@ -423,6 +432,8 @@ public class ZoneManager
         var area = GetActiveArea();
         if (area is not { } workingArea) return;
 
+        var scaling = GetScreenScaling();
+
         var width = Math.Max(PipMinWidth, (int)(workingArea.Width * 0.26));
         var height = Math.Max(PipMinHeight, (int)(workingArea.Height * 0.26));
         var x = workingArea.X + workingArea.Width - width - 24;
@@ -431,34 +442,52 @@ public class ZoneManager
 
         var border = new ZoneBorderWindow();
         border.Show();
-        border.PlaceAt(bounds);
+        border.PlaceAt(bounds, scaling);
         border.SetLabel("PIP");
         border.SetPictureInPicture(true);
 
         var chip = new ZoneChipWindow();
         chip.Show();
-        chip.EnableDragging();
-        chip.PlaceAt(new PixelPoint(bounds.X + 12, bounds.Y + 12));
+        chip.PlaceAt(new PixelPoint(bounds.X + 12, bounds.Y + 28));
         chip.Render(ZoneSlotStatus.Empty, null);
 
-        var grip = new ZoneResizeGripWindow();
-        grip.Show();
+        var moveHandle = new ZonePipMoveHandleWindow();
+        moveHandle.Show();
 
-        var zone = new FloatingZone { Bounds = bounds, Border = border, Chip = chip, Grip = grip };
-        PositionPipGrip(zone);
+        var grips = new Dictionary<PipCorner, ZoneResizeGripWindow>();
+        foreach (var corner in Enum.GetValues<PipCorner>())
+        {
+            var grip = new ZoneResizeGripWindow();
+            grip.Show();
+            grips[corner] = grip;
+        }
+
+        var zone = new FloatingZone
+        {
+            Bounds = bounds,
+            Border = border,
+            Chip = chip,
+            MoveHandle = moveHandle,
+            Grips = grips
+        };
+
+        PositionPipMoveHandle(zone);
+        PositionPipGrips(zone);
         _pip = zone;
 
         chip.AssignRequested += async (_, _) => await OnPipAssignRequestedAsync(zone, chip);
         chip.ClearRequested += (_, _) => OnPipClearRequested(zone);
-        chip.Moved += newPos => OnPipMoved(zone, newPos);
 
-        double gripStartWidth = 0, gripStartHeight = 0;
-        grip.DragStarted += () =>
+        PixelRect moveStartBounds = default;
+        moveHandle.DragStarted += () => moveStartBounds = zone.Bounds;
+        moveHandle.DragDelta += (dx, dy) => OnPipMoved(zone, moveStartBounds, dx, dy);
+
+        foreach (var (corner, grip) in grips)
         {
-            gripStartWidth = zone.Bounds.Width;
-            gripStartHeight = zone.Bounds.Height;
-        };
-        grip.DragDelta += (dx, dy) => OnPipResize(zone, gripStartWidth + dx, gripStartHeight + dy);
+            PixelRect resizeStartBounds = default;
+            grip.DragStarted += () => resizeStartBounds = zone.Bounds;
+            grip.DragDelta += (dx, dy) => OnPipResize(zone, resizeStartBounds, corner, dx, dy);
+        }
 
         EnsureWatchersRunning();
     }
@@ -474,41 +503,60 @@ public class ZoneManager
 
         zone.Border.Close();
         zone.Chip.Close();
-        zone.Grip.Close();
+        zone.MoveHandle.Close();
+        foreach (var grip in zone.Grips.Values) grip.Close();
         _pip = null;
 
         StopWatchersIfIdle();
     }
 
-    private static void PositionPipGrip(FloatingZone zone)
+    private void PositionPipMoveHandle(FloatingZone zone)
     {
-        const int gripSize = 16;
-        zone.Grip.PlaceAt(new PixelPoint(
-            zone.Bounds.X + zone.Bounds.Width - gripSize,
-            zone.Bounds.Y + zone.Bounds.Height - gripSize));
+        zone.MoveHandle.PlaceAt(zone.Bounds, GetScreenScaling());
     }
 
-    private void OnPipMoved(FloatingZone zone, PixelPoint chipTopLeft)
+    private static void PositionPipGrips(FloatingZone zone)
     {
-        zone.Bounds = new PixelRect(chipTopLeft.X - 12, chipTopLeft.Y - 12, zone.Bounds.Width, zone.Bounds.Height);
+        const int gripSize = 14;
+        var b = zone.Bounds;
 
-        zone.Border.PlaceAt(zone.Bounds);
-        PositionPipGrip(zone);
-
-        if (zone.WindowHandle != IntPtr.Zero)
-        {
-            WindowStyleHelper.PlaceWindowFlushTopmost(zone.WindowHandle, zone.Bounds.X, zone.Bounds.Y, zone.Bounds.Width, zone.Bounds.Height);
-        }
+        zone.Grips[PipCorner.TopLeft].PlaceAt(new PixelPoint(b.X - gripSize / 2, b.Y - gripSize / 2));
+        zone.Grips[PipCorner.TopRight].PlaceAt(new PixelPoint(b.X + b.Width - gripSize / 2, b.Y - gripSize / 2));
+        zone.Grips[PipCorner.BottomLeft].PlaceAt(new PixelPoint(b.X - gripSize / 2, b.Y + b.Height - gripSize / 2));
+        zone.Grips[PipCorner.BottomRight].PlaceAt(new PixelPoint(b.X + b.Width - gripSize / 2, b.Y + b.Height - gripSize / 2));
     }
 
-    private void OnPipResize(FloatingZone zone, double newWidth, double newHeight)
+    private void OnPipMoved(FloatingZone zone, PixelRect startBounds, double dx, double dy)
     {
-        var width = (int)Math.Max(PipMinWidth, newWidth);
-        var height = (int)Math.Max(PipMinHeight, newHeight);
-        zone.Bounds = new PixelRect(zone.Bounds.X, zone.Bounds.Y, width, height);
+        zone.Bounds = new PixelRect((int)(startBounds.X + dx), (int)(startBounds.Y + dy), startBounds.Width, startBounds.Height);
+        ApplyPipBounds(zone);
+    }
 
-        zone.Border.PlaceAt(zone.Bounds);
-        PositionPipGrip(zone);
+    private void OnPipResize(FloatingZone zone, PixelRect startBounds, PipCorner corner, double dx, double dy)
+    {
+        var movesX = corner is PipCorner.TopLeft or PipCorner.BottomLeft;
+        var movesY = corner is PipCorner.TopLeft or PipCorner.TopRight;
+
+        var rawWidth = movesX ? startBounds.Width - dx : startBounds.Width + dx;
+        var rawHeight = movesY ? startBounds.Height - dy : startBounds.Height + dy;
+
+        var newWidth = (int)Math.Max(PipMinWidth, rawWidth);
+        var newHeight = (int)Math.Max(PipMinHeight, rawHeight);
+
+        var newX = movesX ? startBounds.X + startBounds.Width - newWidth : startBounds.X;
+        var newY = movesY ? startBounds.Y + startBounds.Height - newHeight : startBounds.Y;
+
+        zone.Bounds = new PixelRect(newX, newY, newWidth, newHeight);
+        ApplyPipBounds(zone);
+    }
+
+    private void ApplyPipBounds(FloatingZone zone)
+    {
+        var scaling = GetScreenScaling();
+        zone.Border.PlaceAt(zone.Bounds, scaling);
+        zone.Chip.PlaceAt(new PixelPoint(zone.Bounds.X + 12, zone.Bounds.Y + 28));
+        PositionPipMoveHandle(zone);
+        PositionPipGrips(zone);
 
         if (zone.WindowHandle != IntPtr.Zero)
         {
@@ -557,6 +605,7 @@ public class ZoneManager
                 File.Exists(appPath) ? appPath : AppIconExtractor.ResolveExePathFromWindow(handle));
 
             WindowStyleHelper.PlaceWindowFlushTopmost(handle, zone.Bounds.X, zone.Bounds.Y, zone.Bounds.Width, zone.Bounds.Height);
+            ScheduleReconcile(zone);
         }
 
         zone.Chip.Render(ZoneSlotStatus.Assigned, title, zone.IconBytes);
@@ -596,9 +645,47 @@ public class ZoneManager
         zone.IconBytes = AppIconExtractor.ExtractIconPng(AppIconExtractor.ResolveExePathFromWindow(hwnd));
 
         WindowStyleHelper.PlaceWindowFlushTopmost(hwnd, zone.Bounds.X, zone.Bounds.Y, zone.Bounds.Width, zone.Bounds.Height);
+        ScheduleReconcile(zone);
 
         zone.Chip.Render(ZoneSlotStatus.Assigned, zone.DisplayName, zone.IconBytes);
         zone.Border.SetOccupied(true);
+    }
+
+    private void ScheduleReconcile(FloatingZone zone)
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            ReconcilePipBounds(zone);
+        };
+        timer.Start();
+    }
+
+    private void ReconcilePipBounds(FloatingZone zone)
+    {
+        if (_pip != zone || zone.WindowHandle == IntPtr.Zero) return;
+        if (!User32.GetWindowRect(zone.WindowHandle, out var actual)) return;
+
+        var actualWidth = actual.Right - actual.Left;
+        var actualHeight = actual.Bottom - actual.Top;
+
+        if (Math.Abs(actualWidth - zone.Bounds.Width) <= 6 && Math.Abs(actualHeight - zone.Bounds.Height) <= 6)
+        {
+            return; // всё совпало — приложение согласилось с запрошенным размером
+        }
+
+        zone.Bounds = new PixelRect(
+            zone.Bounds.X,
+            zone.Bounds.Y,
+            Math.Max(actualWidth, PipMinWidth),
+            Math.Max(actualHeight, PipMinHeight));
+
+        var scaling = GetScreenScaling();
+        zone.Border.PlaceAt(zone.Bounds, scaling);
+        zone.Chip.PlaceAt(new PixelPoint(zone.Bounds.X + 12, zone.Bounds.Y + 28));
+        PositionPipMoveHandle(zone);
+        PositionPipGrips(zone);
     }
 
     private void EnsureMoveWatcherStarted()
@@ -722,11 +809,11 @@ public class ZoneManager
     private static bool Contains(PixelRect b, int x, int y) =>
         x >= b.X && x < b.X + b.Width && y >= b.Y && y < b.Y + b.Height;
 
-    private void CreateSlot(int col, int row, PixelRect bounds, int index)
+    private void CreateSlot(int col, int row, PixelRect bounds, int index, double scaling)
     {
         var border = new ZoneBorderWindow();
         border.Show();
-        border.PlaceAt(bounds);
+        border.PlaceAt(bounds, scaling);
         border.SetIndex(index);
 
         var chip = new ZoneChipWindow();
