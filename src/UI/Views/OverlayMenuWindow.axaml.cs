@@ -90,8 +90,9 @@ public partial class OverlayMenuWindow : Window
 
     private void OnPipToggleClicked(object? sender, RoutedEventArgs e)
     {
-        _zoneManager.TogglePictureInPicture();
+        _zoneManager.AddPictureInPictureZone();
         PipButton.Classes.Set("active", _zoneManager.HasPictureInPicture);
+        ToolTip.SetTip(PipButton, $"Добавить окно поверх (PiP) — сейчас: {_zoneManager.PipZoneCount}");
     }
 
     private void OnSettingsClicked(object? sender, RoutedEventArgs e)

@@ -15,6 +15,8 @@ public partial class ZoneChipWindow : Window
 
     public event EventHandler? SwapClicked;
 
+    /// <summary>Срабатывает при перемещении чипа (только если включён режим EnableDragging) —
+    /// передаёт новую позицию верхнего левого угла чипа на экране.</summary>
     public event Action<PixelPoint>? Moved;
 
     private bool _draggable;
@@ -29,6 +31,8 @@ public partial class ZoneChipWindow : Window
         Opened += (_, _) => ApplyNonActivatingStyle();
     }
 
+    /// <summary>Включает перетаскивание чипа мышью (используется для PiP-зоны — обычные зоны сетки
+    /// двигать нельзя, у них позиция определяется сеткой).</summary>
     public void EnableDragging()
     {
         _draggable = true;
@@ -78,6 +82,13 @@ public partial class ZoneChipWindow : Window
     public void SetSelectedForSwap(bool selected)
     {
         ChipBorder.Classes.Set("swap-selected", selected);
+    }
+
+    /// <summary>Показывает/скрывает предупреждение "приложение не отвечает" — не сбрасывает зону,
+    /// просто визуально отмечает проблему.</summary>
+    public void SetHungWarning(bool hung)
+    {
+        ChipBorder.Classes.Set("hung", hung);
     }
 
     private void OnChipPressed(object? sender, PointerPressedEventArgs e)

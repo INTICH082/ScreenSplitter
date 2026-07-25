@@ -4,26 +4,26 @@
         x:Class="ScreenSplitter.UI.Views.ZonePatternPickerWindow"
         Title="Разбить экран"
         Width="330" Height="620"
-        Background="{StaticResource BgPanel}"
+        Background="{DynamicResource BgPanel}"
         WindowStartupLocation="CenterScreen"
         CanResize="False">
 
   <ScrollViewer>
   <StackPanel Margin="18" Spacing="10">
     <TextBlock Text="МОНИТОР"
-               Foreground="{StaticResource TextMuted}"
+               Foreground="{DynamicResource TextMuted}"
                FontFamily="Consolas" FontSize="10.5" LetterSpacing="1" />
     <ComboBox x:Name="ScreenComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnScreenSelectionChanged" />
 
-    <Rectangle Height="1" Fill="{StaticResource LineHairline}" Margin="0,4" />
+    <Rectangle Height="1" Fill="{DynamicResource LineHairline}" Margin="0,4" />
 
     <TextBlock Text="ГОТОВЫЕ ВАРИАНТЫ"
-               Foreground="{StaticResource TextMuted}"
+               Foreground="{DynamicResource TextMuted}"
                FontFamily="Consolas" FontSize="10.5" LetterSpacing="1" />
 
     <Button Classes="action" HorizontalAlignment="Stretch" Click="OnSingleClicked">
       <Grid ColumnDefinitions="34,*">
-        <Border Grid.Column="0" Width="28" Height="20" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5" CornerRadius="2" />
+        <Border Grid.Column="0" Width="28" Height="20" BorderBrush="{DynamicResource LineHairline}" BorderThickness="1.5" CornerRadius="2" />
         <TextBlock Grid.Column="1" Text="1 большой экран" VerticalAlignment="Center" Margin="8,0,0,0" />
       </Grid>
     </Button>
@@ -31,9 +31,9 @@
     <Button Classes="action" HorizontalAlignment="Stretch" Click="OnVerticalClicked">
       <Grid ColumnDefinitions="34,*">
         <Grid Grid.Column="0" Width="28" Height="20" ColumnDefinitions="*,1,*">
-          <Border Grid.Column="0" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,1.5,0,1.5" />
-          <Rectangle Grid.Column="1" Fill="{StaticResource LineHairline}" />
-          <Border Grid.Column="2" BorderBrush="{StaticResource LineHairline}" BorderThickness="0,1.5,1.5,1.5" />
+          <Border Grid.Column="0" BorderBrush="{DynamicResource LineHairline}" BorderThickness="1.5,1.5,0,1.5" />
+          <Rectangle Grid.Column="1" Fill="{DynamicResource LineHairline}" />
+          <Border Grid.Column="2" BorderBrush="{DynamicResource LineHairline}" BorderThickness="0,1.5,1.5,1.5" />
         </Grid>
         <TextBlock Grid.Column="1" Text="2 экрана: слева / справа" VerticalAlignment="Center" Margin="8,0,0,0" />
       </Grid>
@@ -42,9 +42,9 @@
     <Button Classes="action" HorizontalAlignment="Stretch" Click="OnHorizontalClicked">
       <Grid ColumnDefinitions="34,*">
         <Grid Grid.Column="0" Width="28" Height="20" RowDefinitions="*,1,*">
-          <Border Grid.Row="0" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,1.5,1.5,0" />
-          <Rectangle Grid.Row="1" Fill="{StaticResource LineHairline}" />
-          <Border Grid.Row="2" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,0,1.5,1.5" />
+          <Border Grid.Row="0" BorderBrush="{DynamicResource LineHairline}" BorderThickness="1.5,1.5,1.5,0" />
+          <Rectangle Grid.Row="1" Fill="{DynamicResource LineHairline}" />
+          <Border Grid.Row="2" BorderBrush="{DynamicResource LineHairline}" BorderThickness="1.5,0,1.5,1.5" />
         </Grid>
         <TextBlock Grid.Column="1" Text="2 экрана: сверху / снизу" VerticalAlignment="Center" Margin="8,0,0,0" />
       </Grid>
@@ -53,12 +53,12 @@
     <Button Classes="action" HorizontalAlignment="Stretch" Click="OnGrid2x2Clicked">
       <Grid ColumnDefinitions="34,*">
         <Grid Grid.Column="0" Width="28" Height="20" ColumnDefinitions="*,1,*" RowDefinitions="*,1,*">
-          <Border Grid.Row="0" Grid.Column="0" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,1.5,0,0" />
-          <Border Grid.Row="0" Grid.Column="2" BorderBrush="{StaticResource LineHairline}" BorderThickness="0,1.5,1.5,0" />
-          <Border Grid.Row="2" Grid.Column="0" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,0,0,1.5" />
-          <Border Grid.Row="2" Grid.Column="2" BorderBrush="{StaticResource LineHairline}" BorderThickness="0,0,1.5,1.5" />
-          <Rectangle Grid.Row="1" Grid.ColumnSpan="3" Fill="{StaticResource LineHairline}" />
-          <Rectangle Grid.Column="1" Grid.RowSpan="3" Fill="{StaticResource LineHairline}" />
+          <Border Grid.Row="0" Grid.Column="0" BorderBrush="{DynamicResource LineHairline}" BorderThickness="1.5,1.5,0,0" />
+          <Border Grid.Row="0" Grid.Column="2" BorderBrush="{DynamicResource LineHairline}" BorderThickness="0,1.5,1.5,0" />
+          <Border Grid.Row="2" Grid.Column="0" BorderBrush="{DynamicResource LineHairline}" BorderThickness="1.5,0,0,1.5" />
+          <Border Grid.Row="2" Grid.Column="2" BorderBrush="{DynamicResource LineHairline}" BorderThickness="0,0,1.5,1.5" />
+          <Rectangle Grid.Row="1" Grid.ColumnSpan="3" Fill="{DynamicResource LineHairline}" />
+          <Rectangle Grid.Column="1" Grid.RowSpan="3" Fill="{DynamicResource LineHairline}" />
         </Grid>
         <TextBlock Grid.Column="1" Text="4 экрана (сетка 2x2)" VerticalAlignment="Center" Margin="8,0,0,0" />
       </Grid>
@@ -67,11 +67,11 @@
     <Button Classes="action" HorizontalAlignment="Stretch" Click="OnThreeColumnsClicked">
       <Grid ColumnDefinitions="34,*">
         <Grid Grid.Column="0" Width="28" Height="20" ColumnDefinitions="*,1,*,1,*">
-          <Border Grid.Column="0" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,1.5,0,1.5" />
-          <Rectangle Grid.Column="1" Fill="{StaticResource LineHairline}" />
-          <Border Grid.Column="2" BorderBrush="{StaticResource LineHairline}" BorderThickness="0,1.5,0,1.5" />
-          <Rectangle Grid.Column="3" Fill="{StaticResource LineHairline}" />
-          <Border Grid.Column="4" BorderBrush="{StaticResource LineHairline}" BorderThickness="0,1.5,1.5,1.5" />
+          <Border Grid.Column="0" BorderBrush="{DynamicResource LineHairline}" BorderThickness="1.5,1.5,0,1.5" />
+          <Rectangle Grid.Column="1" Fill="{DynamicResource LineHairline}" />
+          <Border Grid.Column="2" BorderBrush="{DynamicResource LineHairline}" BorderThickness="0,1.5,0,1.5" />
+          <Rectangle Grid.Column="3" Fill="{DynamicResource LineHairline}" />
+          <Border Grid.Column="4" BorderBrush="{DynamicResource LineHairline}" BorderThickness="0,1.5,1.5,1.5" />
         </Grid>
         <TextBlock Grid.Column="1" Text="3 колонки рядом" VerticalAlignment="Center" Margin="8,0,0,0" />
       </Grid>
@@ -80,27 +80,27 @@
     <Button Classes="action" HorizontalAlignment="Stretch" Click="OnAsymmetricClicked">
       <Grid ColumnDefinitions="34,*">
         <Grid Grid.Column="0" Width="28" Height="20" ColumnDefinitions="0.65*,1,0.35*" RowDefinitions="0.65*,1,0.35*">
-          <Border Grid.Row="0" Grid.Column="0" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,1.5,0,0" />
-          <Border Grid.Row="0" Grid.Column="2" BorderBrush="{StaticResource LineHairline}" BorderThickness="0,1.5,1.5,0" />
-          <Border Grid.Row="2" Grid.Column="0" BorderBrush="{StaticResource LineHairline}" BorderThickness="1.5,0,0,1.5" />
-          <Border Grid.Row="2" Grid.Column="2" BorderBrush="{StaticResource LineHairline}" BorderThickness="0,0,1.5,1.5" />
-          <Rectangle Grid.Row="1" Grid.ColumnSpan="3" Fill="{StaticResource LineHairline}" />
-          <Rectangle Grid.Column="1" Grid.RowSpan="3" Fill="{StaticResource LineHairline}" />
+          <Border Grid.Row="0" Grid.Column="0" BorderBrush="{DynamicResource LineHairline}" BorderThickness="1.5,1.5,0,0" />
+          <Border Grid.Row="0" Grid.Column="2" BorderBrush="{DynamicResource LineHairline}" BorderThickness="0,1.5,1.5,0" />
+          <Border Grid.Row="2" Grid.Column="0" BorderBrush="{DynamicResource LineHairline}" BorderThickness="1.5,0,0,1.5" />
+          <Border Grid.Row="2" Grid.Column="2" BorderBrush="{DynamicResource LineHairline}" BorderThickness="0,0,1.5,1.5" />
+          <Rectangle Grid.Row="1" Grid.ColumnSpan="3" Fill="{DynamicResource LineHairline}" />
+          <Rectangle Grid.Column="1" Grid.RowSpan="3" Fill="{DynamicResource LineHairline}" />
         </Grid>
         <TextBlock Grid.Column="1" Text="1 большая + 3 маленькие" VerticalAlignment="Center" Margin="8,0,0,0" />
       </Grid>
     </Button>
 
-    <Rectangle Height="1" Fill="{StaticResource LineHairline}" Margin="0,6" />
+    <Rectangle Height="1" Fill="{DynamicResource LineHairline}" Margin="0,6" />
 
     <TextBlock Text="СВОЙ ВАРИАНТ — СЕТКА"
-               Foreground="{StaticResource TextMuted}"
+               Foreground="{DynamicResource TextMuted}"
                FontFamily="Consolas" FontSize="10.5" LetterSpacing="1" />
     <Grid ColumnDefinitions="Auto,*,Auto,*">
-      <TextBlock Grid.Column="0" Text="Колонки:" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" Margin="0,0,6,0" />
+      <TextBlock Grid.Column="0" Text="Колонки:" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" Margin="0,0,6,0" />
       <ui:NumberBox x:Name="ColsUpDown" Grid.Column="1" Minimum="1" Maximum="6" Value="2"
                     SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="1" />
-      <TextBlock Grid.Column="2" Text="Строки:" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" Margin="12,0,6,0" />
+      <TextBlock Grid.Column="2" Text="Строки:" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" Margin="12,0,6,0" />
       <ui:NumberBox x:Name="RowsUpDown" Grid.Column="3" Minimum="1" Maximum="6" Value="2"
                     SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="1" />
     </Grid>

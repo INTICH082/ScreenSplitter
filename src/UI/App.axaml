@@ -1,35 +1,50 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:styling="using:FluentAvalonia.Styling"
-             x:Class="ScreenSplitter.UI.App"
-             RequestedThemeVariant="Dark">
+             x:Class="ScreenSplitter.UI.App">
 
   <Application.Resources>
-    <SolidColorBrush x:Key="BgPanel" Color="#14181F" />
-    <SolidColorBrush x:Key="BgPanelAlt" Color="#1B212B" />
-    <SolidColorBrush x:Key="BgPanelSunken" Color="#0E1116" />
-    <SolidColorBrush x:Key="LineHairline" Color="#2A3140" />
-    <SolidColorBrush x:Key="AccentSignal" Color="#4FD1C5" />
-    <SolidColorBrush x:Key="AccentAssigned" Color="#F2A65A" />
-    <SolidColorBrush x:Key="AccentFree" Color="#7EE081" />
-    <SolidColorBrush x:Key="AccentDanger" Color="#FF5D5D" />
-    <SolidColorBrush x:Key="TextPrimary" Color="#E7ECF3" />
-    <SolidColorBrush x:Key="TextMuted" Color="#8892A4" />
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="BgPanel" Color="#14181F" />
+          <SolidColorBrush x:Key="BgPanelAlt" Color="#1B212B" />
+          <SolidColorBrush x:Key="BgPanelSunken" Color="#0E1116" />
+          <SolidColorBrush x:Key="LineHairline" Color="#2A3140" />
+          <SolidColorBrush x:Key="TextPrimary" Color="#E7ECF3" />
+          <SolidColorBrush x:Key="TextMuted" Color="#8892A4" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="BgPanel" Color="#F5F7FA" />
+          <SolidColorBrush x:Key="BgPanelAlt" Color="#E8ECF1" />
+          <SolidColorBrush x:Key="BgPanelSunken" Color="#DCE1E8" />
+          <SolidColorBrush x:Key="LineHairline" Color="#C7CFDA" />
+          <SolidColorBrush x:Key="TextPrimary" Color="#1A1F29" />
+          <SolidColorBrush x:Key="TextMuted" Color="#5B6472" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+
+      <!-- Акцентные цвета не зависят от темы — одинаковые что на тёмном, что на светлом фоне -->
+      <SolidColorBrush x:Key="AccentSignal" Color="#4FD1C5" />
+      <SolidColorBrush x:Key="AccentAssigned" Color="#F2A65A" />
+      <SolidColorBrush x:Key="AccentFree" Color="#7EE081" />
+      <SolidColorBrush x:Key="AccentDanger" Color="#FF5D5D" />
+    </ResourceDictionary>
   </Application.Resources>
 
   <Application.Styles>
     <styling:FluentAvaloniaTheme />
 
     <Style Selector="Button.action">
-      <Setter Property="Background" Value="{StaticResource BgPanelAlt}" />
-      <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+      <Setter Property="Background" Value="{DynamicResource BgPanelAlt}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="12,8" />
       <Setter Property="FontFamily" Value="Inter" />
       <Setter Property="FontWeight" Value="Medium" />
       <Setter Property="FontSize" Value="12.5" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="BorderBrush" Value="{StaticResource LineHairline}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LineHairline}" />
       <Setter Property="Cursor" Value="Hand" />
     </Style>
     <Style Selector="Button.action:pointerover /template/ ContentPresenter">
@@ -74,7 +89,7 @@
               </NativeMenuItem.Menu>
             </NativeMenuItem>
             <NativeMenuItem Header="Сценарии..." Click="OnScenariosMenuClicked" />
-            <NativeMenuItem Header="Маленькое окно поверх (PiP)" Click="OnTogglePipMenuClicked" />
+            <NativeMenuItem Header="Добавить окно поверх (PiP)" Click="OnTogglePipMenuClicked" />
             <NativeMenuItem Header="Настройки..." Click="OnSettingsMenuClicked" />
             <NativeMenuItemSeparator />
             <NativeMenuItem Header="Выход" Click="OnExit" />

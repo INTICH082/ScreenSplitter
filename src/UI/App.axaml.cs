@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
 using ScreenSplitter.Core.Models;
 using ScreenSplitter.Platform.Windows;
 using ScreenSplitter.Platform.Windows.Native;
@@ -25,6 +26,8 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        ApplyTheme(ThemePreference.Load());
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -41,6 +44,19 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>Применяет тему (Dark/Light) сразу, без перезапуска приложения.</summary>
+    private void ApplyTheme(string themeName)
+    {
+        RequestedThemeVariant = themeName == "Light" ? ThemeVariant.Light : ThemeVariant.Dark;
+    }
+
+    /// <summary>Меняет и сохраняет тему — вызывается из окна настроек.</summary>
+    public void SetTheme(string themeName)
+    {
+        ApplyTheme(themeName);
+        ThemePreference.Save(themeName);
     }
 
     private void ShowOnboardingIfFirstLaunch()
@@ -107,7 +123,7 @@ public partial class App : Application
     }
 
     /// Перечитывает сохранённые сценарии и перерегистрирует их горячие клавиши (Ctrl+Alt+1..9).
-
+    /// 
     public void RebuildProfileHotkeys()
     {
         if (_hotKeys is null) return;
@@ -175,7 +191,7 @@ public partial class App : Application
 
     private void OnTogglePipMenuClicked(object? sender, System.EventArgs e)
     {
-        _zoneManager.TogglePictureInPicture();
+        _zoneManager.AddPictureInPictureZone();
     }
 
     private void OnSettingsMenuClicked(object? sender, System.EventArgs e)

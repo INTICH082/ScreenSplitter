@@ -18,12 +18,25 @@
           PointerPressed="OnPointerPressed"
           PointerMoved="OnPointerMoved"
           PointerReleased="OnPointerReleased">
-    <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
-      <Ellipse Width="3" Height="3" Fill="#0B0E14" />
-      <Ellipse Width="3" Height="3" Fill="#0B0E14" />
-      <Ellipse Width="3" Height="3" Fill="#0B0E14" />
-      <Ellipse Width="3" Height="3" Fill="#0B0E14" />
-      <Ellipse Width="3" Height="3" Fill="#0B0E14" />
-    </StackPanel>
+    <Grid ColumnDefinitions="*,Auto">
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Ellipse Width="3" Height="3" Fill="#0B0E14" />
+        <Ellipse Width="3" Height="3" Fill="#0B0E14" />
+        <Ellipse Width="3" Height="3" Fill="#0B0E14" />
+        <Ellipse Width="3" Height="3" Fill="#0B0E14" />
+        <Ellipse Width="3" Height="3" Fill="#0B0E14" />
+      </StackPanel>
+      <Button Grid.Column="1"
+              Content="✕"
+              FontSize="9"
+              Padding="5,0"
+              Margin="0,0,2,0"
+              Background="Transparent"
+              BorderThickness="0"
+              Foreground="#0B0E14"
+              Cursor="Hand"
+              Click="OnCloseClicked"
+              ToolTip.Tip="Закрыть это PiP-окно" />
+    </Grid>
   </Border>
 </Window>

@@ -38,6 +38,18 @@
       <Setter Property="BorderThickness" Value="2" />
     </Style>
 
+    <!-- Приложение в этой зоне не отвечает ("зависло") — предупреждаем, но не сбрасываем зону -->
+    <Style Selector="Border#ChipBorder.hung">
+      <Setter Property="BorderBrush" Value="{StaticResource AccentDanger}" />
+      <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="TextBlock#HungWarning">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Border#ChipBorder.hung TextBlock#HungWarning">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+
     <!-- Компактный вид — когда зона уже занята приложением, чипу больше не нужно бросаться в глаза -->
     <Style Selector="Window.compact">
       <Setter Property="Width" Value="126" />
@@ -64,19 +76,19 @@
   </Window.Styles>
 
   <Border x:Name="ChipBorder"
-          Background="{StaticResource BgPanel}"
+          Background="{DynamicResource BgPanel}"
           CornerRadius="17"
           Padding="10,0"
           BorderThickness="1"
-          BorderBrush="{StaticResource LineHairline}"
+          BorderBrush="{DynamicResource LineHairline}"
           PointerPressed="OnChipPressed"
           PointerMoved="OnChipPointerMoved"
           PointerReleased="OnChipPointerReleased">
-    <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+    <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
       <Ellipse x:Name="StatusDot"
                Grid.Column="0"
                Width="7" Height="7"
-               Fill="{StaticResource TextMuted}"
+               Fill="{DynamicResource TextMuted}"
                Margin="0,0,7,0"
                VerticalAlignment="Center" />
       <Image x:Name="AppIcon"
@@ -85,16 +97,24 @@
              Margin="0,0,6,0"
              IsVisible="False"
              VerticalAlignment="Center" />
-      <TextBlock x:Name="Label"
+      <TextBlock x:Name="HungWarning"
                  Grid.Column="2"
+                 Text="⚠"
+                 Foreground="{StaticResource AccentDanger}"
+                 FontSize="11"
+                 Margin="0,0,5,0"
+                 VerticalAlignment="Center"
+                 ToolTip.Tip="Приложение не отвечает" />
+      <TextBlock x:Name="Label"
+                 Grid.Column="3"
                  Text="+ Назначить"
-                 Foreground="{StaticResource TextPrimary}"
+                 Foreground="{DynamicResource TextPrimary}"
                  FontFamily="Consolas"
                  FontSize="11.5"
                  TextTrimming="CharacterEllipsis"
                  VerticalAlignment="Center" />
       <Button x:Name="ClearButton"
-              Grid.Column="3"
+              Grid.Column="4"
               Content="✕"
               Classes="action"
               Padding="6,2"

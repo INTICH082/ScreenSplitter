@@ -13,10 +13,11 @@ namespace ScreenSplitter.UI.Services;
 
 public class ZoneManager
 {
-    private const double MinFraction = 0.08; // минимальный размер зоны — 8% ширины/высоты области
+    private const double MinFraction = 0.08;
     private const int SplitterThickness = 5;
     private const int PipMinWidth = 420;
     private const int PipMinHeight = 300;
+    private const int MaxPipZones = 4;
 
     private class Slot
     {
@@ -34,6 +35,21 @@ public class ZoneManager
         public PixelRect? OriginalWindowBounds { get; set; }
         public byte[]? IconBytes { get; set; }
         public bool IsDropHighlighted { get; set; }
+    }
+
+    /// <summary>Независимая сетка зон на одном конкретном мониторе. Несколько таких сеток могут
+    /// существовать одновременно на разных мониторах — это и даёт возможность переносить окна
+    /// между зонами на разных экранах.</summary>
+    private class MonitorGrid
+    {
+        public required int ScreenIndex { get; init; }
+        public int Cols;
+        public int Rows;
+        public double[] ColBounds = Array.Empty<double>();
+        public double[] RowBounds = Array.Empty<double>();
+        public readonly List<Slot> Slots = new();
+        public readonly List<ZoneSplitterWindow> ColSplitters = new();
+        public readonly List<ZoneSplitterWindow> RowSplitters = new();
     }
 
     private enum PipCorner { TopLeft, TopRight, BottomLeft, BottomRight }
@@ -56,23 +72,16 @@ public class ZoneManager
         public bool IsDropHighlighted;
     }
 
-    private readonly List<Slot> _slots = new();
-    private readonly List<ZoneSplitterWindow> _colSplitters = new();
-    private readonly List<ZoneSplitterWindow> _rowSplitters = new();
-    private FloatingZone? _pip;
+    private readonly Dictionary<int, MonitorGrid> _monitorGrids = new();
+    private readonly List<FloatingZone> _pipZones = new();
 
     private Slot? _pendingSwap;
     private Window? _screenSource;
     private WindowMoveWatcher? _moveWatcher;
     private DispatcherTimer? _dragHoverTimer;
-    private DispatcherTimer? _livenessTimer;
+    private DispatcherTimer? _healthTimer;
     private IntPtr _draggedWindow;
-    private int _targetScreenIndex = -1;
-
-    private int _cols;
-    private int _rows;
-    private double[] _colBounds = Array.Empty<double>();
-    private double[] _rowBounds = Array.Empty<double>();
+    private int _targetScreenIndex = -1; // -1 = основной монитор (Primary)
 
     public void AttachScreenSource(Window window)
     {
@@ -99,26 +108,41 @@ public class ZoneManager
         RecomputeLayout();
     }
 
-    private Screen? GetTargetScreen()
+    private Screen? GetScreenByIndex(int index)
     {
         var screens = _screenSource?.Screens;
-        if (screens is null) return null;
-
-        if (_targetScreenIndex < 0 || _targetScreenIndex >= screens.All.Count)
-        {
-            return screens.Primary;
-        }
-
-        return screens.All[_targetScreenIndex];
+        if (screens is null || index < 0 || index >= screens.All.Count) return null;
+        return screens.All[index];
     }
 
-    private double GetScreenScaling() => GetTargetScreen()?.Scaling ?? 1.0;
+    /// <summary>Превращает текущий выбор монитора (в т.ч. -1 = "основной") в конкретный индекс —
+    /// нужно, чтобы несколько одновременных сеток на разных мониторах не путались между собой.</summary>
+    private int ResolveScreenIndex()
+    {
+        var screens = _screenSource?.Screens;
+        if (screens is null) return 0;
+
+        if (_targetScreenIndex >= 0 && _targetScreenIndex < screens.All.Count) return _targetScreenIndex;
+
+        for (int i = 0; i < screens.All.Count; i++)
+        {
+            if (screens.All[i].IsPrimary) return i;
+        }
+        return 0;
+    }
+
+    private PixelRect? GetActiveAreaFor(int screenIndex)
+    {
+        var screen = GetScreenByIndex(screenIndex);
+        if (screen is null) return null;
+        return TaskbarController.IsHidden ? screen.Bounds : screen.WorkingArea;
+    }
 
     public void ApplyPattern(ZonePatternType type)
     {
         if (type == ZonePatternType.Single)
         {
-            ClearAll();
+            ClearGrid(ResolveScreenIndex());
             return;
         }
 
@@ -130,11 +154,14 @@ public class ZoneManager
         Apply(LayoutPresets.BuildGrid(cols, rows));
     }
 
+    /// <summary>Сохраняет разбивку и назначения зон ТЕКУЩЕГО выбранного монитора как сценарий.
+    /// Возвращает null, если на этом мониторе сейчас нет активной разбивки.</summary>
     public Profile? CaptureCurrentAsProfile(string name)
     {
-        if (_slots.Count == 0 || _cols == 0 || _rows == 0) return null;
+        var screenIndex = ResolveScreenIndex();
+        if (!_monitorGrids.TryGetValue(screenIndex, out var grid) || grid.Slots.Count == 0) return null;
 
-        var assignments = _slots.Select(s => new ZoneAssignment(
+        var assignments = grid.Slots.Select(s => new ZoneAssignment(
             s.Col,
             s.Row,
             s.Status switch
@@ -149,8 +176,8 @@ public class ZoneManager
         return new Profile
         {
             Name = name,
-            Cols = _cols,
-            Rows = _rows,
+            Cols = grid.Cols,
+            Rows = grid.Rows,
             Assignments = assignments
         };
     }
@@ -159,9 +186,12 @@ public class ZoneManager
     {
         Apply(LayoutPresets.BuildGrid(profile.Cols, profile.Rows));
 
+        var screenIndex = ResolveScreenIndex();
+        if (!_monitorGrids.TryGetValue(screenIndex, out var grid)) return;
+
         foreach (var assignment in profile.Assignments)
         {
-            var slot = _slots.FirstOrDefault(s => s.Col == assignment.Col && s.Row == assignment.Row);
+            var slot = grid.Slots.FirstOrDefault(s => s.Col == assignment.Col && s.Row == assignment.Row);
             if (slot is null) continue;
 
             switch (assignment.Kind)
@@ -180,102 +210,131 @@ public class ZoneManager
 
     private void Apply(IReadOnlyList<RelativeZoneRect> pattern)
     {
-        ClearAll();
+        var screenIndex = ResolveScreenIndex();
+        ClearGrid(screenIndex);
 
-        var area = GetActiveArea();
+        var area = GetActiveAreaFor(screenIndex);
         if (area is not { } workingArea) return;
 
         var xs = pattern.Select(r => Math.Round(r.X, 6)).Distinct().OrderBy(v => v).ToList();
         var ys = pattern.Select(r => Math.Round(r.Y, 6)).Distinct().OrderBy(v => v).ToList();
 
-        _cols = xs.Count;
-        _rows = ys.Count;
-        _colBounds = xs.Append(1.0).ToArray();
-        _rowBounds = ys.Append(1.0).ToArray();
+        var grid = new MonitorGrid
+        {
+            ScreenIndex = screenIndex,
+            Cols = xs.Count,
+            Rows = ys.Count,
+            ColBounds = xs.Append(1.0).ToArray(),
+            RowBounds = ys.Append(1.0).ToArray()
+        };
 
-        var scaling = GetScreenScaling();
+        var scaling = GetScreenByIndex(screenIndex)?.Scaling ?? 1.0;
+
         var index = 1;
         foreach (var rel in pattern)
         {
             var col = xs.IndexOf(Math.Round(rel.X, 6));
             var row = ys.IndexOf(Math.Round(rel.Y, 6));
-            var bounds = ZoneBounds(col, row, workingArea);
-            CreateSlot(col, row, bounds, index++, scaling);
+            var bounds = ZoneBounds(grid, col, row, workingArea);
+            CreateSlot(grid, col, row, bounds, index++, scaling);
         }
 
-        CreateSplitters(workingArea);
+        CreateSplitters(grid, workingArea, scaling);
+        _monitorGrids[screenIndex] = grid;
+
         EnsureWatchersRunning();
     }
 
     private void EnsureWatchersRunning()
     {
         EnsureMoveWatcherStarted();
-        EnsureLivenessTimerStarted();
+        EnsureHealthTimerStarted();
     }
 
     private void StopWatchersIfIdle()
     {
-        if (_slots.Count > 0 || _pip is not null) return;
+        if (_monitorGrids.Count > 0 || _pipZones.Count > 0) return;
 
         _dragHoverTimer?.Stop();
         _dragHoverTimer = null;
 
-        _livenessTimer?.Stop();
-        _livenessTimer = null;
+        _healthTimer?.Stop();
+        _healthTimer = null;
 
         _moveWatcher?.Dispose();
         _moveWatcher = null;
     }
 
-    private void EnsureLivenessTimerStarted()
+    /// <summary>
+    /// Периодически проверяет "здоровье" всех занятых зон (на всех мониторах и в PiP):
+    /// — если окно закрыто, зона автоматически возвращается в пустое состояние;
+    /// — если окно "зависло" (не отвечает на сообщения), на чипе показывается предупреждение,
+    ///   но зона не сбрасывается — приложение может ещё отойти.
+    /// </summary>
+    private void EnsureHealthTimerStarted()
     {
-        if (_livenessTimer is not null) return;
+        if (_healthTimer is not null) return;
 
-        _livenessTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-        _livenessTimer.Tick += (_, _) => CheckForClosedWindows();
-        _livenessTimer.Start();
+        _healthTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _healthTimer.Tick += (_, _) => CheckWindowHealth();
+        _healthTimer.Start();
     }
 
-    private void CheckForClosedWindows()
+    private void CheckWindowHealth()
     {
-        foreach (var slot in _slots.ToList())
+        foreach (var grid in _monitorGrids.Values)
         {
-            if (slot.Status == ZoneSlotStatus.Assigned
-                && slot.WindowHandle != IntPtr.Zero
-                && !User32.IsWindow(slot.WindowHandle))
+            foreach (var slot in grid.Slots.ToList())
             {
-                slot.Status = ZoneSlotStatus.Empty;
-                slot.AppPath = null;
-                slot.DisplayName = null;
-                slot.Process = null;
-                slot.WindowHandle = IntPtr.Zero;
-                slot.OriginalWindowBounds = null;
-                slot.IconBytes = null;
-                slot.Chip.Render(ZoneSlotStatus.Empty, null);
-                slot.Border.SetOccupied(false);
+                CheckOneWindowHealth(
+                    slot.Status, slot.WindowHandle,
+                    onClosed: () => ResetSlotToEmpty(slot),
+                    onHealthChanged: hung => slot.Chip.SetHungWarning(hung));
             }
         }
 
-        if (_pip is { WindowHandle: var pipHandle } pip && pipHandle != IntPtr.Zero && !User32.IsWindow(pipHandle))
+        foreach (var pip in _pipZones.ToList())
         {
-            OnPipClearRequested(pip);
+            CheckOneWindowHealth(
+                pip.Status, pip.WindowHandle,
+                onClosed: () => OnPipClearRequested(pip),
+                onHealthChanged: hung => pip.Chip.SetHungWarning(hung));
         }
     }
 
-    private PixelRect? GetActiveArea()
+    private static void CheckOneWindowHealth(ZoneSlotStatus status, IntPtr handle, Action onClosed, Action<bool> onHealthChanged)
     {
-        var screen = GetTargetScreen();
-        if (screen is null) return null;
+        if (status != ZoneSlotStatus.Assigned || handle == IntPtr.Zero) return;
 
-        return TaskbarController.IsHidden ? screen.Bounds : screen.WorkingArea;
+        if (!User32.IsWindow(handle))
+        {
+            onClosed();
+            return;
+        }
+
+        var hung = User32.IsHungAppWindow(handle);
+        onHealthChanged(hung);
     }
 
-    private PixelRect ZoneBounds(int col, int row, PixelRect area)
+    private void ResetSlotToEmpty(Slot slot)
     {
-        var x0 = _colBounds[col];
-        var x1 = _colBounds[col + 1];
-        var y0 = _rowBounds[row];
-        var y1 = _rowBounds[row + 1];
+        slot.Status = ZoneSlotStatus.Empty;
+        slot.AppPath = null;
+        slot.DisplayName = null;
+        slot.Process = null;
+        slot.WindowHandle = IntPtr.Zero;
+        slot.OriginalWindowBounds = null;
+        slot.IconBytes = null;
+        slot.Chip.Render(ZoneSlotStatus.Empty, null);
+        slot.Border.SetOccupied(false);
+    }
+
+    private PixelRect ZoneBounds(MonitorGrid grid, int col, int row, PixelRect area)
+    {
+        var x0 = grid.ColBounds[col];
+        var x1 = grid.ColBounds[col + 1];
+        var y0 = grid.RowBounds[row];
+        var y1 = grid.RowBounds[row + 1];
 
         return new PixelRect(
             area.X + (int)(x0 * area.Width),
@@ -288,156 +347,160 @@ public class ZoneManager
 
     private void RepositionAll()
     {
-        var area = GetActiveArea();
-        if (area is not { } workingArea) return;
-
-        var scaling = GetScreenScaling();
-
-        foreach (var slot in _slots)
+        foreach (var grid in _monitorGrids.Values)
         {
-            var bounds = ZoneBounds(slot.Col, slot.Row, workingArea);
-            slot.Bounds = bounds;
+            var area = GetActiveAreaFor(grid.ScreenIndex);
+            if (area is not { } workingArea) continue;
 
-            slot.Border.PlaceAt(bounds, scaling);
-            slot.Chip.PlaceAt(new PixelPoint(bounds.X + 12, bounds.Y + 12));
+            var scaling = GetScreenByIndex(grid.ScreenIndex)?.Scaling ?? 1.0;
 
-            if (slot.WindowHandle != IntPtr.Zero)
+            foreach (var slot in grid.Slots)
             {
-                WindowStyleHelper.PlaceWindowFlush(slot.WindowHandle, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+                var bounds = ZoneBounds(grid, slot.Col, slot.Row, workingArea);
+                slot.Bounds = bounds;
+
+                slot.Border.PlaceAt(bounds, scaling);
+                slot.Chip.PlaceAt(new PixelPoint(bounds.X + 12, bounds.Y + 12));
+
+                if (slot.WindowHandle != IntPtr.Zero)
+                {
+                    WindowStyleHelper.PlaceWindowFlush(slot.WindowHandle, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+                }
+            }
+
+            for (int i = 0; i < grid.ColSplitters.Count; i++)
+            {
+                PositionColumnSplitter(grid, grid.ColSplitters[i], i + 1, workingArea, scaling);
+            }
+            for (int j = 0; j < grid.RowSplitters.Count; j++)
+            {
+                PositionRowSplitter(grid, grid.RowSplitters[j], j + 1, workingArea, scaling);
             }
         }
 
-        for (int i = 0; i < _colSplitters.Count; i++)
+        var currentArea = GetActiveAreaFor(ResolveScreenIndex());
+        if (currentArea is { } clampArea)
         {
-            PositionColumnSplitter(_colSplitters[i], i + 1, workingArea, scaling);
-        }
-        for (int j = 0; j < _rowSplitters.Count; j++)
-        {
-            PositionRowSplitter(_rowSplitters[j], j + 1, workingArea, scaling);
-        }
-
-        if (_pip is { } pip)
-        {
-            var clampedX = Math.Clamp(pip.Bounds.X, workingArea.X, workingArea.X + workingArea.Width - pip.Bounds.Width);
-            var clampedY = Math.Clamp(pip.Bounds.Y, workingArea.Y, workingArea.Y + workingArea.Height - pip.Bounds.Height);
-            pip.Bounds = new PixelRect(clampedX, clampedY, pip.Bounds.Width, pip.Bounds.Height);
-            pip.Border.PlaceAt(pip.Bounds, scaling);
-            pip.Chip.PlaceAt(new PixelPoint(pip.Bounds.X + 12, pip.Bounds.Y + 12));
-            PositionPipGrips(pip);
-
-            if (pip.WindowHandle != IntPtr.Zero)
+            foreach (var pip in _pipZones)
             {
-                WindowStyleHelper.PlaceWindowFlushTopmost(pip.WindowHandle, pip.Bounds.X, pip.Bounds.Y, pip.Bounds.Width, pip.Bounds.Height);
+                var clampedX = Math.Clamp(pip.Bounds.X, clampArea.X, Math.Max(clampArea.X, clampArea.X + clampArea.Width - pip.Bounds.Width));
+                var clampedY = Math.Clamp(pip.Bounds.Y, clampArea.Y, Math.Max(clampArea.Y, clampArea.Y + clampArea.Height - pip.Bounds.Height));
+                pip.Bounds = new PixelRect(clampedX, clampedY, pip.Bounds.Width, pip.Bounds.Height);
+                ApplyPipBounds(pip);
             }
         }
     }
 
-    private void CreateSplitters(PixelRect area)
+    private void CreateSplitters(MonitorGrid grid, PixelRect area, double scaling)
     {
-        var scaling = GetScreenScaling();
-        for (int i = 1; i < _cols; i++)
+        for (int i = 1; i < grid.Cols; i++)
         {
-            CreateColumnSplitter(i, area, scaling);
+            CreateColumnSplitter(grid, i, area, scaling);
         }
-        for (int j = 1; j < _rows; j++)
+        for (int j = 1; j < grid.Rows; j++)
         {
-            CreateRowSplitter(j, area, scaling);
+            CreateRowSplitter(grid, j, area, scaling);
         }
     }
 
-    private void CreateColumnSplitter(int boundaryIndex, PixelRect area, double scaling)
+    private void CreateColumnSplitter(MonitorGrid grid, int boundaryIndex, PixelRect area, double scaling)
     {
         var splitter = new ZoneSplitterWindow(ZoneSplitterWindow.SplitterOrientation.Vertical);
         splitter.Show();
-        PositionColumnSplitter(splitter, boundaryIndex, area, scaling);
+        PositionColumnSplitter(grid, splitter, boundaryIndex, area, scaling);
 
         double startFraction = 0;
-        splitter.DragStarted += () => startFraction = _colBounds[boundaryIndex];
+        splitter.DragStarted += () => startFraction = grid.ColBounds[boundaryIndex];
         splitter.DragDelta += delta =>
         {
-            var a = GetActiveArea();
+            var a = GetActiveAreaFor(grid.ScreenIndex);
             if (a is not { } ar || ar.Width <= 0) return;
-            SetColumnBoundary(boundaryIndex, startFraction + delta / ar.Width);
+            SetColumnBoundary(grid, boundaryIndex, startFraction + delta / ar.Width);
         };
 
-        _colSplitters.Add(splitter);
+        grid.ColSplitters.Add(splitter);
     }
 
-    private void CreateRowSplitter(int boundaryIndex, PixelRect area, double scaling)
+    private void CreateRowSplitter(MonitorGrid grid, int boundaryIndex, PixelRect area, double scaling)
     {
         var splitter = new ZoneSplitterWindow(ZoneSplitterWindow.SplitterOrientation.Horizontal);
         splitter.Show();
-        PositionRowSplitter(splitter, boundaryIndex, area, scaling);
+        PositionRowSplitter(grid, splitter, boundaryIndex, area, scaling);
 
         double startFraction = 0;
-        splitter.DragStarted += () => startFraction = _rowBounds[boundaryIndex];
+        splitter.DragStarted += () => startFraction = grid.RowBounds[boundaryIndex];
         splitter.DragDelta += delta =>
         {
-            var a = GetActiveArea();
+            var a = GetActiveAreaFor(grid.ScreenIndex);
             if (a is not { } ar || ar.Height <= 0) return;
-            SetRowBoundary(boundaryIndex, startFraction + delta / ar.Height);
+            SetRowBoundary(grid, boundaryIndex, startFraction + delta / ar.Height);
         };
 
-        _rowSplitters.Add(splitter);
+        grid.RowSplitters.Add(splitter);
     }
 
-    private void PositionColumnSplitter(ZoneSplitterWindow splitter, int boundaryIndex, PixelRect area, double scaling)
+    private void PositionColumnSplitter(MonitorGrid grid, ZoneSplitterWindow splitter, int boundaryIndex, PixelRect area, double scaling)
     {
-        var x = area.X + (int)(_colBounds[boundaryIndex] * area.Width) - SplitterThickness / 2;
+        var x = area.X + (int)(grid.ColBounds[boundaryIndex] * area.Width) - SplitterThickness / 2;
         splitter.PlaceAt(new PixelRect(x, area.Y, SplitterThickness, area.Height), scaling);
     }
 
-    private void PositionRowSplitter(ZoneSplitterWindow splitter, int boundaryIndex, PixelRect area, double scaling)
+    private void PositionRowSplitter(MonitorGrid grid, ZoneSplitterWindow splitter, int boundaryIndex, PixelRect area, double scaling)
     {
-        var y = area.Y + (int)(_rowBounds[boundaryIndex] * area.Height) - SplitterThickness / 2;
+        var y = area.Y + (int)(grid.RowBounds[boundaryIndex] * area.Height) - SplitterThickness / 2;
         splitter.PlaceAt(new PixelRect(area.X, y, area.Width, SplitterThickness), scaling);
     }
 
-    private void SetColumnBoundary(int boundaryIndex, double newFraction)
+    private void SetColumnBoundary(MonitorGrid grid, int boundaryIndex, double newFraction)
     {
-        var min = _colBounds[boundaryIndex - 1] + MinFraction;
-        var max = _colBounds[boundaryIndex + 1] - MinFraction;
+        var min = grid.ColBounds[boundaryIndex - 1] + MinFraction;
+        var max = grid.ColBounds[boundaryIndex + 1] - MinFraction;
         if (min > max) return;
 
         newFraction = Math.Clamp(newFraction, min, max);
-        if (Math.Abs(newFraction - _colBounds[boundaryIndex]) < 1e-6) return;
+        if (Math.Abs(newFraction - grid.ColBounds[boundaryIndex]) < 1e-6) return;
 
-        _colBounds[boundaryIndex] = newFraction;
+        grid.ColBounds[boundaryIndex] = newFraction;
         RepositionAll();
     }
 
-    private void SetRowBoundary(int boundaryIndex, double newFraction)
+    private void SetRowBoundary(MonitorGrid grid, int boundaryIndex, double newFraction)
     {
-        var min = _rowBounds[boundaryIndex - 1] + MinFraction;
-        var max = _rowBounds[boundaryIndex + 1] - MinFraction;
+        var min = grid.RowBounds[boundaryIndex - 1] + MinFraction;
+        var max = grid.RowBounds[boundaryIndex + 1] - MinFraction;
         if (min > max) return;
 
         newFraction = Math.Clamp(newFraction, min, max);
-        if (Math.Abs(newFraction - _rowBounds[boundaryIndex]) < 1e-6) return;
+        if (Math.Abs(newFraction - grid.RowBounds[boundaryIndex]) < 1e-6) return;
 
-        _rowBounds[boundaryIndex] = newFraction;
+        grid.RowBounds[boundaryIndex] = newFraction;
         RepositionAll();
     }
 
-    public bool HasPictureInPicture => _pip is not null;
+    // --- Плавающие зоны "картинка в картинке" (PiP) — можно создать несколько одновременно ---
 
-    public void TogglePictureInPicture()
-    {
-        if (_pip is not null) RemovePictureInPicture();
-        else AddPictureInPicture();
-    }
+    public bool HasPictureInPicture => _pipZones.Count > 0;
 
-    private void AddPictureInPicture()
+    public int PipZoneCount => _pipZones.Count;
+
+    /// <summary>Добавляет ещё одну плавающую PiP-зону (до MaxPipZones штук одновременно).</summary>
+    public void AddPictureInPictureZone()
     {
-        var area = GetActiveArea();
+        if (_pipZones.Count >= MaxPipZones) return;
+
+        var screenIndex = ResolveScreenIndex();
+        var area = GetActiveAreaFor(screenIndex);
         if (area is not { } workingArea) return;
 
-        var scaling = GetScreenScaling();
+        var scaling = GetScreenByIndex(screenIndex)?.Scaling ?? 1.0;
 
         var width = Math.Max(PipMinWidth, (int)(workingArea.Width * 0.26));
         var height = Math.Max(PipMinHeight, (int)(workingArea.Height * 0.26));
-        var x = workingArea.X + workingArea.Width - width - 24;
-        var y = workingArea.Y + workingArea.Height - height - 24;
+
+        // Каждая следующая зона смещена по диагонали, чтобы несколько PiP не накладывались друг на друга полностью.
+        var offset = _pipZones.Count * 32;
+        var x = Math.Clamp(workingArea.X + workingArea.Width - width - 24 - offset, workingArea.X, workingArea.X + workingArea.Width - width);
+        var y = Math.Clamp(workingArea.Y + workingArea.Height - height - 24 - offset, workingArea.Y, workingArea.Y + workingArea.Height - height);
         var bounds = new PixelRect(x, y, width, height);
 
         var border = new ZoneBorderWindow();
@@ -473,10 +536,11 @@ public class ZoneManager
 
         PositionPipMoveHandle(zone);
         PositionPipGrips(zone);
-        _pip = zone;
+        _pipZones.Add(zone);
 
         chip.AssignRequested += async (_, _) => await OnPipAssignRequestedAsync(zone, chip);
         chip.ClearRequested += (_, _) => OnPipClearRequested(zone);
+        moveHandle.CloseRequested += () => RemovePictureInPictureZone(zone);
 
         PixelRect moveStartBounds = default;
         moveHandle.DragStarted += () => moveStartBounds = zone.Bounds;
@@ -492,10 +556,8 @@ public class ZoneManager
         EnsureWatchersRunning();
     }
 
-    private void RemovePictureInPicture()
+    private void RemovePictureInPictureZone(FloatingZone zone)
     {
-        if (_pip is not { } zone) return;
-
         if (zone.WindowHandle != IntPtr.Zero && zone.OriginalWindowBounds is { } original)
         {
             WindowStyleHelper.PlaceWindowFlush(zone.WindowHandle, original.X, original.Y, original.Width, original.Height);
@@ -505,14 +567,22 @@ public class ZoneManager
         zone.Chip.Close();
         zone.MoveHandle.Close();
         foreach (var grip in zone.Grips.Values) grip.Close();
-        _pip = null;
+        _pipZones.Remove(zone);
 
         StopWatchersIfIdle();
     }
 
+    private void RemoveAllPictureInPictureZones()
+    {
+        foreach (var zone in _pipZones.ToList())
+        {
+            RemovePictureInPictureZone(zone);
+        }
+    }
+
     private void PositionPipMoveHandle(FloatingZone zone)
     {
-        zone.MoveHandle.PlaceAt(zone.Bounds, GetScreenScaling());
+        zone.MoveHandle.PlaceAt(zone.Bounds, GetScreenByIndex(ResolveScreenIndex())?.Scaling ?? 1.0);
     }
 
     private static void PositionPipGrips(FloatingZone zone)
@@ -552,7 +622,7 @@ public class ZoneManager
 
     private void ApplyPipBounds(FloatingZone zone)
     {
-        var scaling = GetScreenScaling();
+        var scaling = GetScreenByIndex(ResolveScreenIndex())?.Scaling ?? 1.0;
         zone.Border.PlaceAt(zone.Bounds, scaling);
         zone.Chip.PlaceAt(new PixelPoint(zone.Bounds.X + 12, zone.Bounds.Y + 28));
         PositionPipMoveHandle(zone);
@@ -627,13 +697,12 @@ public class ZoneManager
         zone.OriginalWindowBounds = null;
         zone.IconBytes = null;
         zone.Chip.Render(ZoneSlotStatus.Empty, null);
+        zone.Chip.SetHungWarning(false);
         zone.Border.SetOccupied(false);
     }
 
-    private void AssignDroppedWindowToPip(IntPtr hwnd)
+    private void AssignDroppedWindowToPip(FloatingZone zone, IntPtr hwnd)
     {
-        if (_pip is not { } zone) return;
-
         zone.Status = ZoneSlotStatus.Assigned;
         zone.AppPath = null;
         zone.DisplayName = GetWindowTitle(hwnd);
@@ -664,7 +733,7 @@ public class ZoneManager
 
     private void ReconcilePipBounds(FloatingZone zone)
     {
-        if (_pip != zone || zone.WindowHandle == IntPtr.Zero) return;
+        if (!_pipZones.Contains(zone) || zone.WindowHandle == IntPtr.Zero) return;
         if (!User32.GetWindowRect(zone.WindowHandle, out var actual)) return;
 
         var actualWidth = actual.Right - actual.Left;
@@ -672,7 +741,7 @@ public class ZoneManager
 
         if (Math.Abs(actualWidth - zone.Bounds.Width) <= 6 && Math.Abs(actualHeight - zone.Bounds.Height) <= 6)
         {
-            return; // всё совпало — приложение согласилось с запрошенным размером
+            return;
         }
 
         zone.Bounds = new PixelRect(
@@ -681,12 +750,14 @@ public class ZoneManager
             Math.Max(actualWidth, PipMinWidth),
             Math.Max(actualHeight, PipMinHeight));
 
-        var scaling = GetScreenScaling();
+        var scaling = GetScreenByIndex(ResolveScreenIndex())?.Scaling ?? 1.0;
         zone.Border.PlaceAt(zone.Bounds, scaling);
         zone.Chip.PlaceAt(new PixelPoint(zone.Bounds.X + 12, zone.Bounds.Y + 28));
         PositionPipMoveHandle(zone);
         PositionPipGrips(zone);
     }
+
+    // --- Перетаскивание окон и подсветка зон-целей (работает через все мониторы сразу) ---
 
     private void EnsureMoveWatcherStarted()
     {
@@ -701,11 +772,11 @@ public class ZoneManager
     {
         _draggedWindow = hwnd;
 
-        foreach (var slot in _slots)
+        foreach (var grid in _monitorGrids.Values)
         {
-            slot.Border.SetDropTargetActive(true);
+            foreach (var slot in grid.Slots) slot.Border.SetDropTargetActive(true);
         }
-        _pip?.Border.SetDropTargetActive(true);
+        foreach (var pip in _pipZones) pip.Border.SetDropTargetActive(true);
 
         _dragHoverTimer?.Stop();
         _dragHoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
@@ -717,21 +788,38 @@ public class ZoneManager
     {
         if (!User32.GetCursorPos(out var cursor)) return;
 
-        var overPip = _pip is not null && Contains(_pip.Bounds, cursor.X, cursor.Y);
-
-        if (_pip is { } pip && overPip != pip.IsDropHighlighted)
+        // PiP-зоны визуально лежат поверх сеточных — проверяем их первыми (в порядке от последней
+        // созданной к первой, поскольку более новые обычно оказываются выше по z-order).
+        FloatingZone? hoveredPip = null;
+        for (int i = _pipZones.Count - 1; i >= 0; i--)
         {
-            pip.IsDropHighlighted = overPip;
-            pip.Border.SetDropHighlighted(overPip);
+            if (Contains(_pipZones[i].Bounds, cursor.X, cursor.Y))
+            {
+                hoveredPip = _pipZones[i];
+                break;
+            }
         }
 
-        foreach (var slot in _slots)
+        foreach (var pip in _pipZones)
         {
-            var inside = !overPip && Contains(slot.Bounds, cursor.X, cursor.Y);
-            if (inside != slot.IsDropHighlighted)
+            var isHovered = ReferenceEquals(pip, hoveredPip);
+            if (isHovered != pip.IsDropHighlighted)
             {
-                slot.IsDropHighlighted = inside;
-                slot.Border.SetDropHighlighted(inside);
+                pip.IsDropHighlighted = isHovered;
+                pip.Border.SetDropHighlighted(isHovered);
+            }
+        }
+
+        foreach (var grid in _monitorGrids.Values)
+        {
+            foreach (var slot in grid.Slots)
+            {
+                var inside = hoveredPip is null && Contains(slot.Bounds, cursor.X, cursor.Y);
+                if (inside != slot.IsDropHighlighted)
+                {
+                    slot.IsDropHighlighted = inside;
+                    slot.Border.SetDropHighlighted(inside);
+                }
             }
         }
     }
@@ -744,17 +832,27 @@ public class ZoneManager
 
         if (User32.GetCursorPos(out var cursor))
         {
-            if (_pip is not null && Contains(_pip.Bounds, cursor.X, cursor.Y))
+            for (int i = _pipZones.Count - 1; i >= 0; i--)
             {
-                ResetDropVisuals();
-                AssignDroppedWindowToPip(hwnd);
-                return;
+                if (Contains(_pipZones[i].Bounds, cursor.X, cursor.Y))
+                {
+                    var pipTarget = _pipZones[i];
+                    ResetDropVisuals();
+                    AssignDroppedWindowToPip(pipTarget, hwnd);
+                    return;
+                }
             }
 
-            var target = _slots.FirstOrDefault(s => Contains(s.Bounds, cursor.X, cursor.Y));
-            ResetDropVisuals();
-            if (target is not null) AssignDroppedWindow(target, hwnd);
-            return;
+            foreach (var grid in _monitorGrids.Values)
+            {
+                var target = grid.Slots.FirstOrDefault(s => Contains(s.Bounds, cursor.X, cursor.Y));
+                if (target is not null)
+                {
+                    ResetDropVisuals();
+                    AssignDroppedWindow(target, hwnd);
+                    return;
+                }
+            }
         }
 
         ResetDropVisuals();
@@ -762,18 +860,21 @@ public class ZoneManager
 
     private void ResetDropVisuals()
     {
-        if (_pip is { } pip)
+        foreach (var pip in _pipZones)
         {
             pip.Border.SetDropTargetActive(false);
             pip.Border.SetDropHighlighted(false);
             pip.IsDropHighlighted = false;
         }
 
-        foreach (var slot in _slots)
+        foreach (var grid in _monitorGrids.Values)
         {
-            slot.Border.SetDropTargetActive(false);
-            slot.Border.SetDropHighlighted(false);
-            slot.IsDropHighlighted = false;
+            foreach (var slot in grid.Slots)
+            {
+                slot.Border.SetDropTargetActive(false);
+                slot.Border.SetDropHighlighted(false);
+                slot.IsDropHighlighted = false;
+            }
         }
     }
 
@@ -809,7 +910,7 @@ public class ZoneManager
     private static bool Contains(PixelRect b, int x, int y) =>
         x >= b.X && x < b.X + b.Width && y >= b.Y && y < b.Y + b.Height;
 
-    private void CreateSlot(int col, int row, PixelRect bounds, int index, double scaling)
+    private void CreateSlot(MonitorGrid grid, int col, int row, PixelRect bounds, int index, double scaling)
     {
         var border = new ZoneBorderWindow();
         border.Show();
@@ -834,7 +935,7 @@ public class ZoneManager
         chip.ClearRequested += (_, _) => OnClearRequested(slot);
         chip.SwapClicked += (_, _) => OnSwapClicked(slot);
 
-        _slots.Add(slot);
+        grid.Slots.Add(slot);
     }
 
     private async Task OnAssignRequestedAsync(Slot slot, ZoneChipWindow chip)
@@ -892,15 +993,7 @@ public class ZoneManager
             WindowStyleHelper.PlaceWindowFlush(slot.WindowHandle, original.X, original.Y, original.Width, original.Height);
         }
 
-        slot.Status = ZoneSlotStatus.Empty;
-        slot.AppPath = null;
-        slot.DisplayName = null;
-        slot.Process = null;
-        slot.WindowHandle = IntPtr.Zero;
-        slot.OriginalWindowBounds = null;
-        slot.IconBytes = null;
-        slot.Chip.Render(ZoneSlotStatus.Empty, null);
-        slot.Border.SetOccupied(false);
+        ResetSlotToEmpty(slot);
     }
 
     private void OnSwapClicked(Slot slot)
@@ -951,32 +1044,35 @@ public class ZoneManager
         b.Border.SetOccupied(b.Status == ZoneSlotStatus.Assigned);
     }
 
+    /// <summary>Закрывает все окна-оверлеи зон на всех мониторах (включая все PiP). Используется при
+    /// аварийном завершении/краше приложения и обычном выходе — чтобы не оставлять "зависшие" рамки.</summary>
     public void CloseAllZones()
     {
-        RemovePictureInPicture();
-        ClearAll();
+        RemoveAllPictureInPictureZones();
+        foreach (var screenIndex in _monitorGrids.Keys.ToList())
+        {
+            ClearGrid(screenIndex);
+        }
     }
 
-    private void ClearAll()
+    private void ClearGrid(int screenIndex)
     {
-        _pendingSwap = null;
-        foreach (var slot in _slots)
+        if (!_monitorGrids.TryGetValue(screenIndex, out var grid)) return;
+
+        if (_pendingSwap is not null && grid.Slots.Contains(_pendingSwap))
+        {
+            _pendingSwap = null;
+        }
+
+        foreach (var slot in grid.Slots)
         {
             slot.Border.Close();
             slot.Chip.Close();
         }
-        _slots.Clear();
+        foreach (var splitter in grid.ColSplitters) splitter.Close();
+        foreach (var splitter in grid.RowSplitters) splitter.Close();
 
-        foreach (var splitter in _colSplitters) splitter.Close();
-        foreach (var splitter in _rowSplitters) splitter.Close();
-        _colSplitters.Clear();
-        _rowSplitters.Clear();
-
-        _cols = 0;
-        _rows = 0;
-        _colBounds = Array.Empty<double>();
-        _rowBounds = Array.Empty<double>();
-
+        _monitorGrids.Remove(screenIndex);
         StopWatchersIfIdle();
     }
 }

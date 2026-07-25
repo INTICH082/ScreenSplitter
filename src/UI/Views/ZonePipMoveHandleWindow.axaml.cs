@@ -14,6 +14,9 @@ public partial class ZonePipMoveHandleWindow : Window
     public event Action<double, double>? DragDelta; // (dx, dy) в экранных пикселях от начала перетаскивания
     public event Action? DragEnded;
 
+    /// <summary>Клик по крестику на ручке — закрыть именно эту PiP-зону целиком.</summary>
+    public event Action? CloseRequested;
+
     public ZonePipMoveHandleWindow()
     {
         InitializeComponent();
@@ -53,6 +56,11 @@ public partial class ZonePipMoveHandleWindow : Window
         _dragging = false;
         e.Pointer.Capture(null);
         DragEnded?.Invoke();
+    }
+
+    private void OnCloseClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        CloseRequested?.Invoke();
     }
 
     private PixelPoint GetScreenPoint(PointerEventArgs e)

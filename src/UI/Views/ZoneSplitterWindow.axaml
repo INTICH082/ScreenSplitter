@@ -17,6 +17,6 @@
           PointerReleased="OnPointerReleased"
           PointerEntered="OnPointerEntered"
           PointerExited="OnPointerExited">
-    <Border x:Name="Line" Background="{StaticResource LineHairline}" />
+    <Border x:Name="Line" Background="{DynamicResource LineHairline}" />
   </Border>
 </Window>

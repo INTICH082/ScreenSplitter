@@ -3,7 +3,7 @@
         x:Class="ScreenSplitter.UI.Views.ProfileManagerWindow"
         Title="Сценарии ScreenSplitter"
         Width="360" Height="440"
-        Background="{StaticResource BgPanel}"
+        Background="{DynamicResource BgPanel}"
         WindowStartupLocation="CenterScreen"
         CanResize="False">
 
@@ -11,7 +11,7 @@
     <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
       <TextBlock Grid.Column="0"
                  Text="СОХРАНЁННЫЕ СЦЕНАРИИ"
-                 Foreground="{StaticResource TextMuted}"
+                 Foreground="{DynamicResource TextMuted}"
                  FontFamily="Consolas" FontSize="10.5" LetterSpacing="1"
                  VerticalAlignment="Center" />
       <Button Grid.Column="1" Content="⇩ Импорт" Classes="action" FontSize="10" Padding="8,4" Margin="6,0,0,0" Click="OnImportClicked" />
@@ -22,11 +22,11 @@
       <StackPanel x:Name="ProfilesPanel" Spacing="8" />
     </ScrollViewer>
 
-    <Rectangle Grid.Row="3" Height="1" Fill="{StaticResource LineHairline}" Margin="0,14" />
+    <Rectangle Grid.Row="3" Height="1" Fill="{DynamicResource LineHairline}" Margin="0,14" />
 
     <StackPanel Grid.Row="4" Spacing="8">
       <TextBlock Text="Сохранить текущую разбивку как новый сценарий:"
-                 Foreground="{StaticResource TextPrimary}"
+                 Foreground="{DynamicResource TextPrimary}"
                  FontSize="11.5" TextWrapping="Wrap" />
       <Grid ColumnDefinitions="*,Auto">
         <TextBox x:Name="NewProfileNameBox" Grid.Column="0" Watermark="Например: Работа" />
@@ -34,7 +34,7 @@
       </Grid>
       <TextBlock x:Name="HintLabel"
                  Text="Совет: сначала разбей экран и назначь приложения через «▦», затем сохрани получившийся результат здесь как сценарий."
-                 Foreground="{StaticResource TextMuted}"
+                 Foreground="{DynamicResource TextMuted}"
                  FontSize="10.5" TextWrapping="Wrap" />
     </StackPanel>
   </Grid>

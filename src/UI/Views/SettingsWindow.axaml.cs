@@ -11,6 +11,11 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         StartupCheckBox.IsChecked = StartupManager.IsEnabled();
+
+        var currentTheme = ThemePreference.Load();
+        LightThemeRadio.IsChecked = currentTheme == "Light";
+        DarkThemeRadio.IsChecked = currentTheme != "Light";
+
         _initializing = false;
     }
 
@@ -18,5 +23,12 @@ public partial class SettingsWindow : Window
     {
         if (_initializing) return;
         StartupManager.SetEnabled(StartupCheckBox.IsChecked == true);
+    }
+
+    private void OnThemeChanged(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (_initializing) return;
+        var theme = LightThemeRadio.IsChecked == true ? "Light" : "Dark";
+        (Avalonia.Application.Current as App)?.SetTheme(theme);
     }
 }
