@@ -122,8 +122,10 @@ public partial class App : Application
         _displayWatcher.DisplayChanged += () => _zoneManager.RecomputeLayout();
     }
 
+    /// <summary>
     /// Перечитывает сохранённые сценарии и перерегистрирует их горячие клавиши (Ctrl+Alt+1..9).
-    /// 
+    /// Вызывается при старте и после любых изменений в окне управления сценариями.
+    /// </summary>
     public void RebuildProfileHotkeys()
     {
         if (_hotKeys is null) return;
@@ -144,13 +146,27 @@ public partial class App : Application
                 var id = _hotKeys.Register(
                     User32.MOD_CONTROL | User32.MOD_ALT,
                     (uint)('0' + digit),
-                    () => _ = _zoneManager.ApplyProfileAsync(profile));
+                    () => ApplyProfileSafely(profile));
                 _profileHotkeyIds.Add(id);
             }
             catch
             {
                 // комбинация занята — пропускаем именно этот сценарий, остальные продолжают работать
             }
+        }
+    }
+
+    /// <summary>Применяет сценарий по горячей клавише без риска уронить всё приложение, если что-то
+    /// пойдёт не так при запуске одного из назначенных в нём приложений.</summary>
+    private async void ApplyProfileSafely(Profile profile)
+    {
+        try
+        {
+            await _zoneManager.ApplyProfileAsync(profile);
+        }
+        catch
+        {
+            // ошибка в одном сценарии не должна ронять всё приложение
         }
     }
 

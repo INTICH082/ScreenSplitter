@@ -35,6 +35,11 @@ public class ZoneManager
         public PixelRect? OriginalWindowBounds { get; set; }
         public byte[]? IconBytes { get; set; }
         public bool IsDropHighlighted { get; set; }
+
+        /// <summary>Увеличивается при каждом клике "назначить"/"открепить" — позволяет отличить
+        /// "устаревший" результат долгого запуска (пользователь мог успеть очистить зону, пока
+        /// приложение ещё открывалось) от актуального.</summary>
+        public long Generation { get; set; }
     }
 
     /// <summary>Независимая сетка зон на одном конкретном мониторе. Несколько таких сеток могут
@@ -70,6 +75,7 @@ public class ZoneManager
         public PixelRect? OriginalWindowBounds;
         public byte[]? IconBytes;
         public bool IsDropHighlighted;
+        public long Generation;
     }
 
     private readonly Dictionary<int, MonitorGrid> _monitorGrids = new();
@@ -284,7 +290,7 @@ public class ZoneManager
     {
         foreach (var grid in _monitorGrids.Values)
         {
-            foreach (var slot in grid.Slots.ToList())
+            foreach (var slot in grid.Slots)
             {
                 CheckOneWindowHealth(
                     slot.Status, slot.WindowHandle,
@@ -293,7 +299,7 @@ public class ZoneManager
             }
         }
 
-        foreach (var pip in _pipZones.ToList())
+        foreach (var pip in _pipZones)
         {
             CheckOneWindowHealth(
                 pip.Status, pip.WindowHandle,
@@ -318,9 +324,11 @@ public class ZoneManager
 
     private void ResetSlotToEmpty(Slot slot)
     {
+        slot.Generation++;
         slot.Status = ZoneSlotStatus.Empty;
         slot.AppPath = null;
         slot.DisplayName = null;
+        slot.Process?.Dispose();
         slot.Process = null;
         slot.WindowHandle = IntPtr.Zero;
         slot.OriginalWindowBounds = null;
@@ -538,7 +546,7 @@ public class ZoneManager
         PositionPipGrips(zone);
         _pipZones.Add(zone);
 
-        chip.AssignRequested += async (_, _) => await OnPipAssignRequestedAsync(zone, chip);
+        chip.AssignRequested += (_, _) => FireAndForget(OnPipAssignRequestedAsync(zone, chip));
         chip.ClearRequested += (_, _) => OnPipClearRequested(zone);
         moveHandle.CloseRequested += () => RemovePictureInPictureZone(zone);
 
@@ -567,6 +575,7 @@ public class ZoneManager
         zone.Chip.Close();
         zone.MoveHandle.Close();
         foreach (var grip in zone.Grips.Values) grip.Close();
+        zone.Process?.Dispose();
         _pipZones.Remove(zone);
 
         StopWatchersIfIdle();
@@ -641,6 +650,7 @@ public class ZoneManager
         switch (choice.Kind)
         {
             case AssignChoiceKind.Free:
+                zone.Generation++;
                 zone.Status = ZoneSlotStatus.Free;
                 chip.Render(ZoneSlotStatus.Free, null);
                 break;
@@ -653,12 +663,22 @@ public class ZoneManager
 
     private async Task LaunchIntoPipAsync(FloatingZone zone, string appPath, string? displayName)
     {
+        var myGeneration = ++zone.Generation;
         var fallbackTitle = System.IO.Path.GetFileNameWithoutExtension(appPath);
         var title = displayName ?? fallbackTitle;
 
         zone.Chip.Render(ZoneSlotStatus.Assigned, $"Запуск: {title}...");
 
         var (process, handle) = await ProcessWindowLocator.LaunchAndWaitForWindowAsync(appPath);
+
+        if (zone.Generation != myGeneration)
+        {
+            // Пока приложение запускалось, зону уже открепили/переназначили — не воскрешаем старое
+            // назначение, просто освобождаем то, что успели захватить (само окно приложения при этом
+            // никуда не денется, просто останется там, где само открылось).
+            process?.Dispose();
+            return;
+        }
 
         zone.AppPath = appPath;
         zone.DisplayName = displayName;
@@ -671,11 +691,20 @@ public class ZoneManager
             zone.OriginalWindowBounds = User32.GetWindowRect(handle, out var rect)
                 ? new PixelRect(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top)
                 : null;
-            zone.IconBytes = AppIconExtractor.ExtractIconPng(
-                File.Exists(appPath) ? appPath : AppIconExtractor.ResolveExePathFromWindow(handle));
 
             WindowStyleHelper.PlaceWindowFlushTopmost(handle, zone.Bounds.X, zone.Bounds.Y, zone.Bounds.Width, zone.Bounds.Height);
             ScheduleReconcile(zone);
+
+            var capturedAppPath = appPath;
+            var capturedHandle = handle;
+            var iconBytes = await Task.Run(() =>
+            {
+                var iconSourcePath = File.Exists(capturedAppPath) ? capturedAppPath : AppIconExtractor.ResolveExePathFromWindow(capturedHandle);
+                return AppIconExtractor.ExtractIconPng(iconSourcePath);
+            });
+
+            if (zone.Generation != myGeneration) return; // снова проверяем — вдруг очистили именно во время загрузки иконки
+            zone.IconBytes = iconBytes;
         }
 
         zone.Chip.Render(ZoneSlotStatus.Assigned, title, zone.IconBytes);
@@ -689,9 +718,11 @@ public class ZoneManager
             WindowStyleHelper.PlaceWindowFlush(zone.WindowHandle, original.X, original.Y, original.Width, original.Height);
         }
 
+        zone.Generation++;
         zone.Status = ZoneSlotStatus.Empty;
         zone.AppPath = null;
         zone.DisplayName = null;
+        zone.Process?.Dispose();
         zone.Process = null;
         zone.WindowHandle = IntPtr.Zero;
         zone.OriginalWindowBounds = null;
@@ -703,21 +734,37 @@ public class ZoneManager
 
     private void AssignDroppedWindowToPip(FloatingZone zone, IntPtr hwnd)
     {
+        zone.Generation++;
         zone.Status = ZoneSlotStatus.Assigned;
         zone.AppPath = null;
         zone.DisplayName = GetWindowTitle(hwnd);
+        zone.Process?.Dispose(); // на случай, если в зоне до этого было запущенное нами приложение
         zone.Process = null;
         zone.WindowHandle = hwnd;
         zone.OriginalWindowBounds = User32.GetWindowRect(hwnd, out var rect)
             ? new PixelRect(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top)
             : null;
-        zone.IconBytes = AppIconExtractor.ExtractIconPng(AppIconExtractor.ResolveExePathFromWindow(hwnd));
+        zone.IconBytes = null;
 
         WindowStyleHelper.PlaceWindowFlushTopmost(hwnd, zone.Bounds.X, zone.Bounds.Y, zone.Bounds.Width, zone.Bounds.Height);
         ScheduleReconcile(zone);
 
-        zone.Chip.Render(ZoneSlotStatus.Assigned, zone.DisplayName, zone.IconBytes);
+        zone.Chip.Render(ZoneSlotStatus.Assigned, zone.DisplayName, null);
         zone.Border.SetOccupied(true);
+
+        FireAndForget(LoadPipIconInBackgroundAsync(zone, hwnd, zone.Generation));
+    }
+
+    /// <summary>Извлекает иконку приложения на фоновом потоке (файловый I/O + GDI+ — не должно
+    /// подвешивать UI) и обновляет чип, только если зона за это время не успела измениться.</summary>
+    private async Task LoadPipIconInBackgroundAsync(FloatingZone zone, IntPtr hwnd, long generation)
+    {
+        var iconBytes = await Task.Run(() => AppIconExtractor.ExtractIconPng(AppIconExtractor.ResolveExePathFromWindow(hwnd)));
+
+        if (zone.Generation != generation) return; // зону уже успели открепить/переназначить — не перетираем
+
+        zone.IconBytes = iconBytes;
+        zone.Chip.Render(zone.Status, zone.DisplayName, iconBytes);
     }
 
     private void ScheduleReconcile(FloatingZone zone)
@@ -880,20 +927,34 @@ public class ZoneManager
 
     private void AssignDroppedWindow(Slot slot, IntPtr hwnd)
     {
+        slot.Generation++;
         slot.Status = ZoneSlotStatus.Assigned;
         slot.AppPath = null;
         slot.DisplayName = GetWindowTitle(hwnd);
+        slot.Process?.Dispose(); // на случай, если в зоне до этого было запущенное нами приложение
         slot.Process = null;
         slot.WindowHandle = hwnd;
         slot.OriginalWindowBounds = User32.GetWindowRect(hwnd, out var rect)
             ? new PixelRect(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top)
             : null;
-        slot.IconBytes = AppIconExtractor.ExtractIconPng(AppIconExtractor.ResolveExePathFromWindow(hwnd));
+        slot.IconBytes = null;
 
         WindowStyleHelper.PlaceWindowFlush(hwnd, slot.Bounds.X, slot.Bounds.Y, slot.Bounds.Width, slot.Bounds.Height);
 
-        slot.Chip.Render(ZoneSlotStatus.Assigned, slot.DisplayName, slot.IconBytes);
+        slot.Chip.Render(ZoneSlotStatus.Assigned, slot.DisplayName, null);
         slot.Border.SetOccupied(true);
+
+        FireAndForget(LoadSlotIconInBackgroundAsync(slot, hwnd, slot.Generation));
+    }
+
+    private async Task LoadSlotIconInBackgroundAsync(Slot slot, IntPtr hwnd, long generation)
+    {
+        var iconBytes = await Task.Run(() => AppIconExtractor.ExtractIconPng(AppIconExtractor.ResolveExePathFromWindow(hwnd)));
+
+        if (slot.Generation != generation) return; // зону уже успели открепить/переназначить — не перетираем
+
+        slot.IconBytes = iconBytes;
+        slot.Chip.Render(slot.Status, slot.DisplayName, iconBytes);
     }
 
     private static string GetWindowTitle(IntPtr hwnd)
@@ -909,6 +970,24 @@ public class ZoneManager
 
     private static bool Contains(PixelRect b, int x, int y) =>
         x >= b.X && x < b.X + b.Width && y >= b.Y && y < b.Y + b.Height;
+
+    /// <summary>
+    /// Безопасно запускает асинхронную операцию "в фоне" (без ожидания результата вызывающей стороной).
+    /// Без этого любая необработанная ошибка внутри такой операции (например, сбой при запуске
+    /// приложения) улетела бы как необработанное исключение и — через общий обработчик крашей
+    /// приложения — закрыла бы ScreenSplitter целиком из-за второстепенной фоновой проблемы.
+    /// </summary>
+    private static async void FireAndForget(Task task)
+    {
+        try
+        {
+            await task;
+        }
+        catch
+        {
+            // Фоновая операция не должна ронять всё приложение — просто прерываем именно её.
+        }
+    }
 
     private void CreateSlot(MonitorGrid grid, int col, int row, PixelRect bounds, int index, double scaling)
     {
@@ -931,7 +1010,7 @@ public class ZoneManager
             Chip = chip
         };
 
-        chip.AssignRequested += async (_, _) => await OnAssignRequestedAsync(slot, chip);
+        chip.AssignRequested += (_, _) => FireAndForget(OnAssignRequestedAsync(slot, chip));
         chip.ClearRequested += (_, _) => OnClearRequested(slot);
         chip.SwapClicked += (_, _) => OnSwapClicked(slot);
 
@@ -945,6 +1024,7 @@ public class ZoneManager
         switch (choice.Kind)
         {
             case AssignChoiceKind.Free:
+                slot.Generation++;
                 slot.Status = ZoneSlotStatus.Free;
                 chip.Render(ZoneSlotStatus.Free, null);
                 break;
@@ -957,12 +1037,19 @@ public class ZoneManager
 
     private async Task LaunchIntoSlotAsync(Slot slot, string appPath, string? displayName)
     {
+        var myGeneration = ++slot.Generation;
         var fallbackTitle = System.IO.Path.GetFileNameWithoutExtension(appPath);
         var title = displayName ?? fallbackTitle;
 
         slot.Chip.Render(ZoneSlotStatus.Assigned, $"Запуск: {title}...");
 
         var (process, handle) = await ProcessWindowLocator.LaunchAndWaitForWindowAsync(appPath);
+
+        if (slot.Generation != myGeneration)
+        {
+            process?.Dispose();
+            return;
+        }
 
         slot.AppPath = appPath;
         slot.DisplayName = displayName;
@@ -975,11 +1062,20 @@ public class ZoneManager
             slot.OriginalWindowBounds = User32.GetWindowRect(handle, out var rect)
                 ? new PixelRect(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top)
                 : null;
-            slot.IconBytes = AppIconExtractor.ExtractIconPng(
-                File.Exists(appPath) ? appPath : AppIconExtractor.ResolveExePathFromWindow(handle));
 
             WindowStyleHelper.PlaceWindowFlush(handle, slot.Bounds.X, slot.Bounds.Y, slot.Bounds.Width, slot.Bounds.Height);
             WindowStyleHelper.ActivateWindow(handle);
+
+            var capturedAppPath = appPath;
+            var capturedHandle = handle;
+            var iconBytes = await Task.Run(() =>
+            {
+                var iconSourcePath = File.Exists(capturedAppPath) ? capturedAppPath : AppIconExtractor.ResolveExePathFromWindow(capturedHandle);
+                return AppIconExtractor.ExtractIconPng(iconSourcePath);
+            });
+
+            if (slot.Generation != myGeneration) return;
+            slot.IconBytes = iconBytes;
         }
 
         slot.Chip.Render(ZoneSlotStatus.Assigned, title, slot.IconBytes);
@@ -1068,6 +1164,7 @@ public class ZoneManager
         {
             slot.Border.Close();
             slot.Chip.Close();
+            slot.Process?.Dispose();
         }
         foreach (var splitter in grid.ColSplitters) splitter.Close();
         foreach (var splitter in grid.RowSplitters) splitter.Close();

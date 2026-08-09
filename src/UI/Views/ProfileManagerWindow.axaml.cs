@@ -82,7 +82,11 @@ public partial class ProfileManagerWindow : Window
 
         var applyButton = new Button { Content = "▶", Classes = { "action" }, Padding = new Avalonia.Thickness(8, 4) };
         ToolTip.SetTip(applyButton, "Применить сценарий");
-        applyButton.Click += async (_, _) => await _zoneManager.ApplyProfileAsync(profile);
+        applyButton.Click += async (_, _) =>
+        {
+            try { await _zoneManager.ApplyProfileAsync(profile); }
+            catch { /* ошибка в одном сценарии не должна ронять всё приложение */ }
+        };
         Grid.SetColumn(applyButton, 2);
 
         var deleteButton = new Button { Content = "✕", Classes = { "action" }, Margin = new Avalonia.Thickness(6, 0, 0, 0), Padding = new Avalonia.Thickness(8, 4) };

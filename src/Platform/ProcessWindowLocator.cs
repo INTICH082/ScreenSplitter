@@ -12,10 +12,14 @@ public static class ProcessWindowLocator
         var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(8));
         var ownProcessId = (uint)Environment.ProcessId;
 
+        var preLaunchForeground = User32.GetForegroundWindow();
+
         Process? process;
         try
         {
-            var startInfo = IsUrl(target) ? DefaultBrowserLauncher.BuildLaunchInfo(target) : new ProcessStartInfo(target) { UseShellExecute = true };
+            var startInfo = IsUrl(target)
+                ? DefaultBrowserLauncher.BuildLaunchInfo(target)
+                : new ProcessStartInfo(target) { UseShellExecute = true };
 
             process = Process.Start(startInfo);
         }
@@ -24,6 +28,7 @@ public static class ProcessWindowLocator
             process = null;
         }
 
+        // Быстрый путь: обычное приложение, у своего же процесса появилось собственное главное окно.
         if (process is not null)
         {
             var handle = await WaitForMainWindowAsync(process, TimeSpan.FromMilliseconds(1500));
@@ -38,7 +43,7 @@ public static class ProcessWindowLocator
             await Task.Delay(150);
 
             var foreground = User32.GetForegroundWindow();
-            if (IsUsableWindow(foreground, ownProcessId))
+            if (foreground != preLaunchForeground && IsUsableWindow(foreground, ownProcessId))
             {
                 return (process, foreground);
             }
@@ -82,8 +87,9 @@ public static class ProcessWindowLocator
         if (hwnd == IntPtr.Zero || !User32.IsWindowVisible(hwnd)) return false;
 
         User32.GetWindowThreadProcessId(hwnd, out var pid);
-        if (pid == ownProcessId) return false;
+        if (pid == ownProcessId) return false; // не переносим свои же окна (меню, чипы, рамки)
 
+        // Окна без заголовка обычно служебные (рабочий стол, панель задач и т.п.) — пропускаем их.
         return User32.GetWindowTextLength(hwnd) > 0;
     }
 }

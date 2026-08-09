@@ -20,6 +20,10 @@ public partial class ZoneSplitterWindow : Window
 
     public event Action? DragEnded;
 
+    public ZoneSplitterWindow() : this(new SplitterOrientation())
+    {
+    }
+
     public ZoneSplitterWindow(SplitterOrientation orientation)
     {
         _orientation = orientation;

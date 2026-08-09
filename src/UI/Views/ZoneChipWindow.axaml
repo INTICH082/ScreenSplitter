@@ -81,9 +81,7 @@
           Padding="10,0"
           BorderThickness="1"
           BorderBrush="{DynamicResource LineHairline}"
-          PointerPressed="OnChipPressed"
-          PointerMoved="OnChipPointerMoved"
-          PointerReleased="OnChipPointerReleased">
+          PointerPressed="OnChipPressed">
     <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
       <Ellipse x:Name="StatusDot"
                Grid.Column="0"

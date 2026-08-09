@@ -6,19 +6,15 @@ namespace ScreenSplitter.Platform.Windows;
 [SupportedOSPlatform("windows")]
 public static class GpuLoadMonitor
 {
+    private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(10);
+
     private static List<PerformanceCounter>? _counters;
-    private static bool _unavailable;
+    private static DateTime _lastRefresh = DateTime.MinValue;
 
     public static double? GetGpuUsagePercent()
     {
-        if (_unavailable) return null;
-
-        EnsureCounters();
-        if (_counters is null || _counters.Count == 0)
-        {
-            _unavailable = true;
-            return null;
-        }
+        EnsureCountersFresh();
+        if (_counters is null || _counters.Count == 0) return null;
 
         try
         {
@@ -31,16 +27,21 @@ public static class GpuLoadMonitor
         }
         catch
         {
-            _unavailable = true;
+            // Один из счётчиков мог исчезнуть (закрылось GPU-приложение) — не отключаем мониторинг
+            // насовсем, просто пересоберём список счётчиков при следующем обращении.
+            DisposeCounters();
             return null;
         }
     }
 
-    private static void EnsureCounters()
+    private static void EnsureCountersFresh()
     {
-        if (_counters is not null) return;
+        if (_counters is not null && DateTime.UtcNow - _lastRefresh < RefreshInterval) return;
 
+        DisposeCounters();
+        _lastRefresh = DateTime.UtcNow;
         _counters = new List<PerformanceCounter>();
+
         try
         {
             var category = new PerformanceCounterCategory("GPU Engine");
@@ -54,12 +55,24 @@ public static class GpuLoadMonitor
                     {
                         _counters.Add(counter);
                     }
+                    else
+                    {
+                        counter.Dispose(); // не используем этот конкретный счётчик — сразу освобождаем
+                    }
                 }
             }
         }
         catch
         {
-            _counters = new List<PerformanceCounter>();
+            // Счётчики недоступны на этой системе — оставляем пустой список, попробуем ещё раз
+            // через RefreshInterval (вдруг ситуация изменится, например обновится видеодрайвер).
         }
+    }
+
+    private static void DisposeCounters()
+    {
+        if (_counters is null) return;
+        foreach (var counter in _counters) counter.Dispose();
+        _counters = null;
     }
 }
