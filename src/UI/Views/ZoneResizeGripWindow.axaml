@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ScreenSplitter.UI.Views.ZoneResizeGripWindow"
-        Width="16" Height="16"
+        Width="14" Height="14"
         SystemDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
@@ -10,12 +10,22 @@
         CanResize="False"
         ShowActivated="False"
         Cursor="SizeAll"
+        MinWidth="1"
+        MinHeight="1"
         WindowStartupLocation="Manual">
 
+  <!-- GripBorder — весь хит-тест (14x14, удобная область захвата курсором), фон прозрачный.
+       Видимый маркер — маленькая точка по центру, чтобы не перекрывать угол зоны крупным квадратом. -->
   <Border x:Name="GripBorder"
-          Background="{StaticResource AccentAssigned}"
-          CornerRadius="4"
+          Background="Transparent"
           PointerPressed="OnPointerPressed"
           PointerMoved="OnPointerMoved"
-          PointerReleased="OnPointerReleased" />
+          PointerReleased="OnPointerReleased">
+    <Ellipse Width="7"
+              Height="7"
+              Fill="{StaticResource AccentAssigned}"
+              IsHitTestVisible="False"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center" />
+  </Border>
 </Window>

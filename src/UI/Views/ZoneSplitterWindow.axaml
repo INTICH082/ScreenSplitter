@@ -8,6 +8,8 @@
         ShowInTaskbar="False"
         CanResize="False"
         ShowActivated="False"
+        MinWidth="1"
+        MinHeight="1"
         WindowStartupLocation="Manual">
 
   <Border x:Name="Handle"

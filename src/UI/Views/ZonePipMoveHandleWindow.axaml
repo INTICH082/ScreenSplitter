@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ScreenSplitter.UI.Views.ZonePipMoveHandleWindow"
-        Height="22"
+        Height="14"
         SystemDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
@@ -10,30 +10,46 @@
         CanResize="False"
         ShowActivated="False"
         Cursor="SizeAll"
+        MinWidth="1"
+        MinHeight="1"
         WindowStartupLocation="Manual">
 
+  <!-- HandleBorder — весь хит-тест drag-зоны (14px, удобно попасть курсором), фон прозрачный.
+       Видимую "полосу" рисует только вложенный Pill — так ручка не выглядит тяжёлой плашкой
+       поверх контента, но целиться курсором по-прежнему легко по всей высоте окна. -->
   <Border x:Name="HandleBorder"
-          Background="{StaticResource AccentAssigned}"
-          CornerRadius="6,6,0,0"
+          Background="Transparent"
           PointerPressed="OnPointerPressed"
           PointerMoved="OnPointerMoved"
           PointerReleased="OnPointerReleased">
-    <Grid ColumnDefinitions="*,Auto">
-      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
-        <Ellipse Width="3" Height="3" Fill="#0B0E14" />
-        <Ellipse Width="3" Height="3" Fill="#0B0E14" />
-        <Ellipse Width="3" Height="3" Fill="#0B0E14" />
-        <Ellipse Width="3" Height="3" Fill="#0B0E14" />
-        <Ellipse Width="3" Height="3" Fill="#0B0E14" />
-      </StackPanel>
-      <Button Grid.Column="1"
-              Content="✕"
-              FontSize="9"
-              Padding="5,0"
-              Margin="0,0,2,0"
+    <Grid>
+      <Border x:Name="Pill"
+              Background="{StaticResource AccentAssigned}"
+              CornerRadius="3"
+              Width="34"
+              Height="6"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              IsHitTestVisible="False">
+        <StackPanel Orientation="Horizontal" Spacing="2.5" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <Ellipse Width="2" Height="2" Fill="#0B0E14" />
+          <Ellipse Width="2" Height="2" Fill="#0B0E14" />
+          <Ellipse Width="2" Height="2" Fill="#0B0E14" />
+          <Ellipse Width="2" Height="2" Fill="#0B0E14" />
+          <Ellipse Width="2" Height="2" Fill="#0B0E14" />
+        </StackPanel>
+      </Border>
+      <Button Content="✕"
+              FontSize="8"
+              Padding="4,0"
+              Margin="0,0,3,0"
+              MinWidth="0"
+              MinHeight="0"
               Background="Transparent"
               BorderThickness="0"
-              Foreground="#0B0E14"
+              Foreground="{DynamicResource TextMuted}"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Center"
               Cursor="Hand"
               Click="OnCloseClicked"
               ToolTip.Tip="Закрыть это PiP-окно" />
